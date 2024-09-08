@@ -3,6 +3,8 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
+  @poll_rate 30
+
   def render(assigns) do
     ~H"""
     <div>
@@ -24,10 +26,10 @@ defmodule FlappyWeb.FlappyLive do
   def mount(_params, _session, socket) do
     # Let's assume a fixed y_position for now
     flappy_engine_pid = FlappyEngine |> GenServer.whereis() || FlappyEngine.start_engine()
-    %{position: y_position, velocity: _velocity} = FlappyEngine.get_bird_state()
+    %{position: y_position, velocity: _velocity} = FlappyEngine.get_game_state()
 
     # Subscribe to updates
-    if connected?(socket), do: Process.send_after(self(), :tick, 100)
+    if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
     {:ok, socket |> assign(:y_position, y_position) |> assign(:flappy_engine, flappy_engine_pid)}
   end
@@ -38,27 +40,20 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
-  # def handle_event("vertical_move", %{"key" => "ArrowDown"}, socket) do
-  #   {:ok, new_position} = inc_position(socket.assigns.y_position)
-  #   {:noreply, assign(socket, :y_position, new_position)}
-  # end
+  def handle_event("vertical_move", %{"key" => "ArrowDown"}, socket) do
+    FlappyEngine.go_down()
+
+    {:noreply, socket}
+  end
 
   def handle_event("vertical_move", _, socket) do
     {:noreply, socket}
   end
 
   def handle_info(:tick, socket) do
-    %{position: y_position, velocity: _velocity} = FlappyEngine.get_bird_state()
-    Process.send_after(self(), :tick, 100)
+    %{position: y_position, velocity: _velocity} = FlappyEngine.get_game_state()
+    Process.send_after(self(), :tick, @poll_rate)
 
     {:noreply, assign(socket, :y_position, y_position)}
   end
-
-  # defp inc_position(position) when position < 500 do
-  #   {:ok, position + 50}
-  # end
-
-  # defp inc_position(position) do
-  #   {:ok, position}
-  # end
 end
