@@ -3,7 +3,7 @@ defmodule Flappy.FlappyEngine do
 
   @gravity -20
   @thrust 50
-  @update_interval 100
+  @update_interval 30
 
   defstruct position: 0, velocity: 0
 
@@ -24,6 +24,12 @@ defmodule Flappy.FlappyEngine do
   def handle_call(:go_up, _from, %{velocity: velocity} = state) do
     IO.inspect(state, label: "Going up")
     new_velocity = velocity + @thrust
+    {:reply, state, %{state | velocity: new_velocity}}
+  end
+
+  def handle_call(:go_down, _from, %{velocity: velocity} = state) do
+    IO.inspect(state, label: "Going down")
+    new_velocity = velocity - @thrust
     {:reply, state, %{state | velocity: new_velocity}}
   end
 
@@ -62,11 +68,15 @@ defmodule Flappy.FlappyEngine do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def get_bird_state() do
+  def get_game_state() do
     GenServer.call(__MODULE__, :get_state)
   end
 
   def go_up() do
     GenServer.call(__MODULE__, :go_up)
+  end
+
+  def go_down() do
+    GenServer.call(__MODULE__, :go_down)
   end
 end
