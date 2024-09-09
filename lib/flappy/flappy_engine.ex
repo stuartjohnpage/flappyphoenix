@@ -1,17 +1,20 @@
 defmodule Flappy.FlappyEngine do
   use GenServer
 
-  @gravity -20
-  @thrust 50
+  @gravity 100
+  @thrust -50
   @update_interval 30
+  @init_position 500
+  @init_velocity 0
+  @ceiling 0
 
   defstruct position: 0, velocity: 0
 
   @impl true
   def init(_args) do
     state = %__MODULE__{
-      position: 0,
-      velocity: 0
+      position: @init_position,
+      velocity: @init_velocity
     }
 
     # Start the periodic update
@@ -48,9 +51,9 @@ defmodule Flappy.FlappyEngine do
     # Update the state with new position and velocity
     state = %{state | position: new_position, velocity: new_velocity}
 
-    # Ensure the bird doesn't go below ground level (position >= 0) or above the screen (position <= 500)
+    # Ensure the bird doesn't go below ground level (position <= 500) or above the screen  (position >= 0)
     cond do
-      new_position < 0 ->
+      new_position < @ceiling ->
         state = %{state | position: 0, velocity: 0}
         {:noreply, state}
 
