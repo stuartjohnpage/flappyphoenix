@@ -1,20 +1,27 @@
 defmodule Flappy.FlappyEngine do
   use GenServer
 
+  # TIME VARIABLES
+  @update_interval 30
+
+  ### VELOCITY VARIABLES
+  @init_velocity 0
   @gravity 100
   @thrust -50
-  @update_interval 30
-  @init_position 500
-  @init_velocity 0
-  @ceiling 0
 
-  defstruct position: 0, velocity: 0
+  ### POSITION BOUNDS
+  @ceiling 0
+  @init_position 250
+  @floor 500
+
+  defstruct position: 0, velocity: 0, game_over: false
 
   @impl true
   def init(_args) do
     state = %__MODULE__{
       position: @init_position,
-      velocity: @init_velocity
+      velocity: @init_velocity,
+      game_over: false
     }
 
     # Start the periodic update
@@ -42,7 +49,7 @@ defmodule Flappy.FlappyEngine do
 
   @impl true
   def handle_info(:update_position, %{position: position, velocity: velocity} = state) do
-    IO.inspect(state, label: "Gravity!")
+    IO.inspect(state, label: "Game state")
     # Calculate the new velocity considering gravity
     new_velocity = velocity + @gravity * (@update_interval / 1000)
     # Calculate the new position
@@ -54,11 +61,11 @@ defmodule Flappy.FlappyEngine do
     # Ensure the bird doesn't go below ground level (position <= 500) or above the screen  (position >= 0)
     cond do
       new_position < @ceiling ->
-        state = %{state | position: 0, velocity: 0}
+        state = %{state | position: 0, velocity: 0, game_over: true}
         {:noreply, state}
 
-      new_position > 500 ->
-        state = %{state | position: 500, velocity: 0}
+      new_position > @floor ->
+        state = %{state | position: 500, velocity: 0, game_over: true}
         {:noreply, state}
 
       true ->
@@ -69,6 +76,10 @@ defmodule Flappy.FlappyEngine do
   # Public API
   def start_engine() do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  end
+
+  def stop_engine() do
+    GenServer.stop(__MODULE__)
   end
 
   def get_game_state() do
