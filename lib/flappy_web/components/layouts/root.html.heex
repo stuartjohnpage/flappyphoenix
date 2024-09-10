@@ -11,7 +11,11 @@
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
   </head>
-<body class="bg-white bg-opacity-50 bg-no-repeat bg-cover bg-center" style="background-image: url('/images/cityscape.webp');">
-  <%= @inner_content %>
-</body>
+  <div class="bg-black opacity-[0.7] h-full w-full fixed -z-10"></div>
+  <body
+    class="bg-cover bg-center bg-no-repeat h-full"
+    style="background-image: url('/images/cityscape.webp');"
+  >
+    <%= @inner_content %>
+  </body>
 </html>

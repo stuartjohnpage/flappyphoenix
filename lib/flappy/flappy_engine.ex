@@ -10,18 +10,20 @@ defmodule Flappy.FlappyEngine do
   @thrust -50
 
   ### POSITION BOUNDS
-  @ceiling 0
-  @init_position 250
-  @floor 500
+  @game_height 630
+  @ceiling -50
+  @init_position @game_height / 2
+  @floor @game_height
 
-  defstruct position: 0, velocity: 0, game_over: false
+  defstruct position: 0, velocity: 0, game_over: false, game_height: @game_height
 
   @impl true
   def init(_args) do
     state = %__MODULE__{
       position: @init_position,
       velocity: @init_velocity,
-      game_over: false
+      game_over: false,
+      game_height: @game_height
     }
 
     # Start the periodic update
@@ -92,5 +94,9 @@ defmodule Flappy.FlappyEngine do
 
   def go_down() do
     GenServer.call(__MODULE__, :go_down)
+  end
+
+  def get_game_height() do
+    @game_height
   end
 end
