@@ -1,8 +1,10 @@
 defmodule Flappy.FlappyEngine do
+  @moduledoc false
   use GenServer
 
   # TIME VARIABLES
   @update_interval 30
+  @update_score 1000
 
   ### VELOCITY VARIABLES
   @init_velocity 0
@@ -15,7 +17,7 @@ defmodule Flappy.FlappyEngine do
   @init_position @game_height / 2
   @floor @game_height
 
-  defstruct position: 0, velocity: 0, game_over: false, game_height: @game_height
+  defstruct position: 0, velocity: 0, game_over: false, game_height: @game_height, score: 0
 
   @impl true
   def init(_args) do
@@ -23,11 +25,13 @@ defmodule Flappy.FlappyEngine do
       position: @init_position,
       velocity: @init_velocity,
       game_over: false,
-      game_height: @game_height
+      game_height: @game_height,
+      score: 0
     }
 
     # Start the periodic update
     :timer.send_interval(@update_interval, self(), :update_position)
+    :timer.send_interval(@update_score, self(), :update_score)
     IO.inspect(state, label: "Initial state")
     {:ok, state}
   end
@@ -75,28 +79,33 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
+  def handle_info(:update_score, state) do
+    state = %{state | score: state.score + 1}
+    {:noreply, state}
+  end
+
   # Public API
-  def start_engine() do
+  def start_engine do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def stop_engine() do
+  def stop_engine do
     GenServer.stop(__MODULE__)
   end
 
-  def get_game_state() do
+  def get_game_state do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  def go_up() do
+  def go_up do
     GenServer.call(__MODULE__, :go_up)
   end
 
-  def go_down() do
+  def go_down do
     GenServer.call(__MODULE__, :go_down)
   end
 
-  def get_game_height() do
+  def get_game_height do
     @game_height
   end
 end

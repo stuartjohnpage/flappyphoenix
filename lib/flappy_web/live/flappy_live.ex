@@ -1,4 +1,5 @@
 defmodule FlappyWeb.FlappyLive do
+  @moduledoc false
   use FlappyWeb, :live_view
 
   alias Flappy.FlappyEngine
@@ -12,27 +13,35 @@ defmodule FlappyWeb.FlappyLive do
         :if={!@game_over && !@game_started}
         class="flex flex-col items-center justify-center h-screen"
       >
-        Get ready to play Flappy Phoenix! <br />
-        <br /> Don't let the 🐦‍🔥 fly too high, or hit the ground! <br />
-        <br /> Used the arrow keys (⬆️ and ⬇️) to move up and down! <br />
-        <br /> 👀 Good luck!
-        <.button phx-click="start_game" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-          Play
+        <p class="text-white text-4xl">Get ready to play Flappy Phoenix!</p>
+        <br />
+        <p class="text-white text-2xl">Don't let the 🐦‍🔥 fly too high, or hit the ground!</p>
+        <br />
+        <p class="text-white text-2xl">Used the arrow keys (⬆️ and ⬇️) to move up and down!</p>
+        <br />
+        <p class="text-white text-2xl">👀 Good luck!</p>
+        <.button phx-click="start_game" class="bg-blue-500 rounded mt-10">
+          <p class="p-4 text-4xl text-white">Play</p>
         </.button>
+      </div>
+      <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
+        <p class="text-white text-4xl">Score: <%= @score %></p>
       </div>
       <div id="game-area" class="game-area relative w-full" style={"height: #{@game_height}px;"}>
         <div
           :if={!@game_over && @game_started}
-          id="phoenix-container"
+          id="bird-container"
           phx-window-keydown="vertical_move"
           style={"position: absolute; top: #{@bird_position_percentage}%"}
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
         <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
-          YOU LOSE! I SAY GOOD DAY SIR!
+          <p class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+          <br />
+          <p class="text-white text-4xl">Your final score was <%= @score %></p>
           <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            Play Again?
+            <p class="p-4 text-4xl text-white">Play Again?</p>
           </.button>
         </div>
       </div>
@@ -49,14 +58,21 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:bird_position_percentage, 0)
      |> assign(:game_over, false)
      |> assign(:game_started, false)
+     |> assign(:score, 0)
      |> assign(:game_height, game_height)}
   end
 
   @spec handle_event(<<_::64, _::_*8>>, any(), any()) :: {:noreply, any()}
   def handle_event("start_game", _, socket) do
-    flappy_engine_pid = FlappyEngine |> GenServer.whereis() || FlappyEngine.start_engine()
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine()
 
-    %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{
+      position: y_position,
+      velocity: _velocity,
+      game_over: game_over,
+      game_height: game_height,
+      score: score
+    } =
       FlappyEngine.get_game_state()
 
     # Subscribe to updates
@@ -68,6 +84,7 @@ defmodule FlappyWeb.FlappyLive do
      socket
      |> assign(:bird_position_percentage, bird_position_percentage)
      |> assign(:flappy_engine, flappy_engine_pid)
+     |> assign(:score, score)
      |> assign(:game_over, game_over)
      |> assign(:game_started, true)}
   end
@@ -77,7 +94,7 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("play_again", _, socket) do
-    flappy_engine_pid = FlappyEngine |> GenServer.whereis() || FlappyEngine.start_engine()
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine()
 
     %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
       FlappyEngine.get_game_state()
@@ -111,18 +128,27 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_info(:tick, socket) do
-    %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{
+      position: y_position,
+      velocity: _velocity,
+      game_over: game_over,
+      game_height: game_height,
+      score: score
+    } =
       FlappyEngine.get_game_state()
 
     bird_position_percentage = y_position / game_height * 100
 
     if game_over do
       FlappyEngine.stop_engine()
-      {:noreply, socket |> assign(:game_over, true)}
+      {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
     else
       Process.send_after(self(), :tick, @poll_rate)
 
-      {:noreply, assign(socket, :bird_position_percentage, bird_position_percentage)}
+      {:noreply,
+       socket
+       |> assign(:bird_position_percentage, bird_position_percentage)
+       |> assign(:score, score)}
     end
   end
 end
