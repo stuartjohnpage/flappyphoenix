@@ -10,23 +10,18 @@ defmodule Flappy.FlappyEngine do
   @init_velocity 0
   @gravity 100
   @thrust -50
+  @start_score 0
 
-  ### POSITION BOUNDS
-  @game_height 630
-  @ceiling -50
-  @init_position @game_height / 2
-  @floor @game_height
-
-  defstruct position: 0, velocity: 0, game_over: false, game_height: @game_height, score: 0
+  defstruct position: 0, velocity: 0, game_over: false, game_height: 0, score: 0
 
   @impl true
-  def init(_args) do
+  def init(%{game_height: game_height}) do
     state = %__MODULE__{
-      position: @init_position,
+      position: game_height / 2,
       velocity: @init_velocity,
       game_over: false,
-      game_height: @game_height,
-      score: 0
+      game_height: game_height,
+      score: @start_score
     }
 
     # Start the periodic update
@@ -54,7 +49,7 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:update_position, %{position: position, velocity: velocity} = state) do
+  def handle_info(:update_position, %{position: position, velocity: velocity, game_height: game_height} = state) do
     IO.inspect(state, label: "Game state")
     # Calculate the new velocity considering gravity
     new_velocity = velocity + @gravity * (@update_interval / 1000)
@@ -66,12 +61,12 @@ defmodule Flappy.FlappyEngine do
 
     # Ensure the bird doesn't go below ground level (position <= 500) or above the screen  (position >= 0)
     cond do
-      new_position < @ceiling ->
+      new_position < -100 ->
         state = %{state | position: 0, velocity: 0, game_over: true}
         {:noreply, state}
 
-      new_position > @floor ->
-        state = %{state | position: 500, velocity: 0, game_over: true}
+      new_position > game_height - 100 ->
+        state = %{state | position: game_height, velocity: 0, game_over: true}
         {:noreply, state}
 
       true ->
@@ -85,8 +80,9 @@ defmodule Flappy.FlappyEngine do
   end
 
   # Public API
-  def start_engine do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  def start_engine(game_height) do
+    IO.inspect(game_height, label: "Game height")
+    GenServer.start_link(__MODULE__, %{game_height: game_height}, name: __MODULE__)
   end
 
   def stop_engine do
@@ -103,9 +99,5 @@ defmodule Flappy.FlappyEngine do
 
   def go_down do
     GenServer.call(__MODULE__, :go_down)
-  end
-
-  def get_game_height do
-    @game_height
   end
 end

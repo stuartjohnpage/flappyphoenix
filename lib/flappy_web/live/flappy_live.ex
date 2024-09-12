@@ -37,7 +37,11 @@ defmodule FlappyWeb.FlappyLive do
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
         <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
-          <p class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+          <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+          <%!-- start Gavin's idea --%>
+          <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
+          <%!-- end Gavin's idea --%>
+
           <br />
           <p class="text-white text-4xl">Your final score was <%= @score %></p>
           <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
@@ -51,20 +55,20 @@ defmodule FlappyWeb.FlappyLive do
 
   @spec mount(any(), any(), Phoenix.LiveView.Socket.t()) :: {:ok, map()}
   def mount(_params, _session, socket) do
-    game_height = FlappyEngine.get_game_height()
+    game_height = get_connect_params(socket)["viewport_height"] || 0
 
     {:ok,
      socket
      |> assign(:bird_position_percentage, 0)
      |> assign(:game_over, false)
+     |> assign(:game_height, game_height)
      |> assign(:game_started, false)
      |> assign(:score, 0)
      |> assign(:game_height, game_height)}
   end
 
-  @spec handle_event(<<_::64, _::_*8>>, any(), any()) :: {:noreply, any()}
-  def handle_event("start_game", _, socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine()
+  def handle_event("start_game", _, %{assigns: %{game_height: game_height}} = socket) do
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
 
     %{
       position: y_position,
@@ -93,8 +97,8 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_height: height)}
   end
 
-  def handle_event("play_again", _, socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine()
+  def handle_event("play_again", _, %{assigns: %{game_height: game_height}} = socket) do
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
 
     %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
       FlappyEngine.get_game_state()
