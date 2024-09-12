@@ -16,7 +16,7 @@ defmodule FlappyWeb.CoreComponents do
   """
   use Phoenix.Component
 
-  import FlappyWeb.Gettext
+  use Gettext, backend: FlappyWeb.Gettext
 
   alias Phoenix.HTML.FormField
   alias Phoenix.LiveView.JS
