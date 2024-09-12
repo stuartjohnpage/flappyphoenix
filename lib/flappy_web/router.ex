@@ -1,5 +1,6 @@
 defmodule FlappyWeb.Router do
   use FlappyWeb, :router
+
   import Phoenix.LiveView.Router
 
   pipeline :browser do
