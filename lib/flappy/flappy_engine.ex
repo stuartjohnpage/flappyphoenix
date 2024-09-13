@@ -101,3 +101,19 @@ defmodule Flappy.FlappyEngine do
     GenServer.call(__MODULE__, :go_down)
   end
 end
+
+
+
+### Thoughts I had last night
+
+# * we should randomly generate which enemies are going to appear on the screen,
+# as well as their heights and velocities.
+
+# * we should have a way to make the game harder as the player progresses,
+# this could be done by increasing the velocity of the enemies,
+# or by increasing the difficulty of the obstacles.
+
+# we should take the enemies and their speeds and heights, and
+# take randomly from pools of them.
+
+# Enemies can consist of the logos of different frameworks which compete with phoenix.
