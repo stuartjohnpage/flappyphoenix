@@ -17,7 +17,6 @@ defmodule Flappy.FlappyEngine do
   @impl true
   def init(%{game_height: game_height}) do
     gravity = @gravity / game_height * 1000
-
     state = %__MODULE__{
       position: game_height / 2,
       velocity: @init_velocity,
