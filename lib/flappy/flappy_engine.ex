@@ -2,8 +2,10 @@ defmodule Flappy.FlappyEngine do
   @moduledoc false
   use GenServer
 
+  alias Flappy.Enemy
+
   # TIME VARIABLES
-  @game_tick_interval 30
+  @game_tick_interval 15
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
@@ -12,10 +14,11 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  defstruct bird_position: 0, velocity: 0, game_over: false, game_height: 0, score: 0, gravity: 0, enemies: []
+  # Game state
+  defstruct bird_position: 0, velocity: 0, game_over: false, game_height: 0, game_width: 0, score: 0, gravity: 0, enemies: []
 
   @impl true
-  def init(%{game_height: game_height}) do
+  def init(%{game_height: game_height, game_width: game_width}) do
     gravity = @gravity / game_height * 1000
 
     state = %__MODULE__{
@@ -23,9 +26,19 @@ defmodule Flappy.FlappyEngine do
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
+      game_width: game_width,
       score: @start_score,
       gravity: gravity,
-      enemies: []
+      enemies: [
+        %Enemy{
+          position: -400,
+          velocity: 100
+        },
+        %Enemy{
+          position: -200,
+          velocity: 100
+        }
+      ]
     }
 
     # Start the periodic update
@@ -53,26 +66,20 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(
-        :update_position,
-        %{bird_position: bird_position, velocity: velocity, game_height: game_height, gravity: gravity} = state
-      ) do
-    IO.inspect(state, label: "Game state")
-    # Calculate the new velocity considering gravity
-    new_velocity = velocity + gravity * (@tick_interval / 1000)
-    # Calculate the new bird_position
-    new_position = bird_position + new_velocity * (@tick_interval / 1000)
+  def handle_info(:game_tick, %{game_height: game_height} = state) do
 
-    # Update the state with new bird_position and velocity
-    state = %{state | bird_position: new_position, velocity: new_velocity}
+    state
+    = state
+    |> update_player()
+    |> update_enemies()
 
-    # Ensure the bird doesn't go below ground level (bird_position <= 500) or above the screen  (bird_position >= 0)
+    # Ensure the bird doesn't go below ground level (game_height from state) or above the screen  (0)
     cond do
-      new_position < -100 ->
+      state.bird_position < 0 ->
         state = %{state | bird_position: 0, velocity: 0, game_over: true}
         {:noreply, state}
 
-      new_position > game_height - 100 ->
+      state.bird_position > game_height - 100 ->
         state = %{state | bird_position: game_height, velocity: 0, game_over: true}
         {:noreply, state}
 
@@ -86,10 +93,29 @@ defmodule Flappy.FlappyEngine do
     {:noreply, state}
   end
 
+  defp update_player(%{bird_position: bird_position, velocity: velocity, gravity: gravity} = state) do
+    # Calculate the new velocity considering gravity
+    new_velocity = velocity + gravity * (@game_tick_interval / 1000)
+    # Calculate the new bird_position
+    new_position = bird_position + new_velocity * (@game_tick_interval / 1000)
+
+    %{state | bird_position: new_position, velocity: new_velocity}
+  end
+
+  defp update_enemies(state) do
+    enemies =
+      state.enemies
+      |> Enum.map(fn enemy ->
+        %{enemy | position: enemy.position + enemy.velocity * (@game_tick_interval / 1000)}
+      end)
+
+    %{state | enemies: enemies}
+    end
+
   # Public API
-  def start_engine(game_height) do
+  def start_engine(game_height, game_width) do
     IO.inspect(game_height, label: "Game height")
-    GenServer.start_link(__MODULE__, %{game_height: game_height}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width}, name: __MODULE__)
   end
 
   def stop_engine do
