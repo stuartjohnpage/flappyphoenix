@@ -8,20 +8,23 @@ defmodule Flappy.FlappyEngine do
 
   ### VELOCITY VARIABLES
   @init_velocity 0
-  @gravity 100
-  @thrust -50
+  @gravity 250
+  @thrust -100
   @start_score 0
 
-  defstruct position: 0, velocity: 0, game_over: false, game_height: 0, score: 0
+  defstruct position: 0, velocity: 0, game_over: false, game_height: 0, score: 0, gravity: 0, enemies: []
 
   @impl true
   def init(%{game_height: game_height}) do
+    gravity = @gravity / game_height * 1000
     state = %__MODULE__{
       position: game_height / 2,
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
-      score: @start_score
+      score: @start_score,
+      gravity: gravity,
+      enemies: []
     }
 
     # Start the periodic update
@@ -49,10 +52,10 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:update_position, %{position: position, velocity: velocity, game_height: game_height} = state) do
+  def handle_info(:update_position, %{position: position, velocity: velocity, game_height: game_height, gravity: gravity} = state) do
     IO.inspect(state, label: "Game state")
     # Calculate the new velocity considering gravity
-    new_velocity = velocity + @gravity * (@update_interval / 1000)
+    new_velocity = velocity + gravity * (@update_interval / 1000)
     # Calculate the new position
     new_position = position + new_velocity * (@update_interval / 1000)
 
@@ -100,4 +103,24 @@ defmodule Flappy.FlappyEngine do
   def go_down do
     GenServer.call(__MODULE__, :go_down)
   end
+
+  defp enemies do
+
+  end
 end
+
+
+
+### Thoughts I had last night
+
+# * we should randomly generate which enemies are going to appear on the screen,
+# as well as their heights and velocities.
+
+# * we should have a way to make the game harder as the player progresses,
+# this could be done by increasing the velocity of the enemies,
+# or by increasing the difficulty of the obstacles.
+
+# we should take the enemies and their speeds and heights, and
+# take randomly from pools of them.
+
+# Enemies can consist of the logos of different frameworks which compete with phoenix.
