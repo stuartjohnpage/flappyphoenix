@@ -36,6 +36,9 @@ defmodule FlappyWeb.FlappyLive do
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
+        <div>
+          <img src={~p"/images/ruby_on_rails.svg"} />
+        </div>
         <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
           <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
           <%!-- start Gavin's idea --%>
@@ -116,13 +119,13 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("vertical_move", %{"key" => "ArrowUp"}, socket) do
-    FlappyEngine.go_up()
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_up()
 
     {:noreply, socket}
   end
 
   def handle_event("vertical_move", %{"key" => "ArrowDown"}, socket) do
-    FlappyEngine.go_down()
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_down()
 
     {:noreply, socket}
   end
