@@ -74,7 +74,7 @@ defmodule FlappyWeb.FlappyLive do
     flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
 
     %{
-      position: y_position,
+      bird_position: bird_position,
       velocity: _velocity,
       game_over: game_over,
       game_height: game_height,
@@ -85,7 +85,7 @@ defmodule FlappyWeb.FlappyLive do
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
     {:noreply,
      socket
@@ -103,10 +103,10 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("play_again", _, %{assigns: %{game_height: game_height}} = socket) do
     flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
 
-    %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{bird_position: bird_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
@@ -136,7 +136,7 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info(:tick, socket) do
     %{
-      position: y_position,
+      bird_position: bird_position,
       velocity: _velocity,
       game_over: game_over,
       game_height: game_height,
@@ -144,7 +144,7 @@ defmodule FlappyWeb.FlappyLive do
     } =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
     if game_over do
       FlappyEngine.stop_engine()

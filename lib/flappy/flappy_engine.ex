@@ -3,8 +3,8 @@ defmodule Flappy.FlappyEngine do
   use GenServer
 
   # TIME VARIABLES
-  @update_interval 30
-  @update_score 1000
+  @game_tick_interval 30
+  @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
   @init_velocity 0
@@ -12,13 +12,14 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  defstruct position: 0, velocity: 0, game_over: false, game_height: 0, score: 0, gravity: 0, enemies: []
+  defstruct bird_position: 0, velocity: 0, game_over: false, game_height: 0, score: 0, gravity: 0, enemies: []
 
   @impl true
   def init(%{game_height: game_height}) do
     gravity = @gravity / game_height * 1000
+
     state = %__MODULE__{
-      position: game_height / 2,
+      bird_position: game_height / 2,
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
@@ -28,8 +29,8 @@ defmodule Flappy.FlappyEngine do
     }
 
     # Start the periodic update
-    :timer.send_interval(@update_interval, self(), :update_position)
-    :timer.send_interval(@update_score, self(), :update_score)
+    :timer.send_interval(@game_tick_interval, self(), :game_tick)
+    :timer.send_interval(@score_tick_interval, self(), :score_tick)
     IO.inspect(state, label: "Initial state")
     {:ok, state}
   end
@@ -52,24 +53,27 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:update_position, %{position: position, velocity: velocity, game_height: game_height, gravity: gravity} = state) do
+  def handle_info(
+        :update_position,
+        %{bird_position: bird_position, velocity: velocity, game_height: game_height, gravity: gravity} = state
+      ) do
     IO.inspect(state, label: "Game state")
     # Calculate the new velocity considering gravity
-    new_velocity = velocity + gravity * (@update_interval / 1000)
-    # Calculate the new position
-    new_position = position + new_velocity * (@update_interval / 1000)
+    new_velocity = velocity + gravity * (@tick_interval / 1000)
+    # Calculate the new bird_position
+    new_position = bird_position + new_velocity * (@tick_interval / 1000)
 
-    # Update the state with new position and velocity
-    state = %{state | position: new_position, velocity: new_velocity}
+    # Update the state with new bird_position and velocity
+    state = %{state | bird_position: new_position, velocity: new_velocity}
 
-    # Ensure the bird doesn't go below ground level (position <= 500) or above the screen  (position >= 0)
+    # Ensure the bird doesn't go below ground level (bird_position <= 500) or above the screen  (bird_position >= 0)
     cond do
       new_position < -100 ->
-        state = %{state | position: 0, velocity: 0, game_over: true}
+        state = %{state | bird_position: 0, velocity: 0, game_over: true}
         {:noreply, state}
 
       new_position > game_height - 100 ->
-        state = %{state | position: game_height, velocity: 0, game_over: true}
+        state = %{state | bird_position: game_height, velocity: 0, game_over: true}
         {:noreply, state}
 
       true ->
@@ -77,7 +81,7 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  def handle_info(:update_score, state) do
+  def handle_info(:score_tick, state) do
     state = %{state | score: state.score + 1}
     {:noreply, state}
   end
@@ -104,12 +108,9 @@ defmodule Flappy.FlappyEngine do
     GenServer.call(__MODULE__, :go_down)
   end
 
-  defp enemies do
-
-  end
+  # defp enemies do
+  # end
 end
-
-
 
 ### Thoughts I had last night
 
