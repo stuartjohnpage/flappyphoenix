@@ -48,15 +48,13 @@ defmodule FlappyWeb.FlappyLive do
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
-        <%= inspect(@game_width) %>
         <%= for enemy <- @enemies do %>
           <div
             id="enemy-container"
             class="absolute"
-            style={"position: absolute; right: #{enemy.position / @game_width * 100}%"}
+            style={"position: absolute; right: #{100 - elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
           >
-            <%= inspect(enemy) %>
-            <img src={~p"/images/ruby_on_rails.svg"} />
+            <img src={"/images/ruby_on_rails.svg"} />
           </div>
         <% end %>
       </div>
@@ -158,17 +156,18 @@ defmodule FlappyWeb.FlappyLive do
 
     bird_position_percentage = bird_position / game_height * 100
 
-    if game_over do
-      FlappyEngine.stop_engine()
-      {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
-    else
-      Process.send_after(self(), :tick, @poll_rate)
+    # if game_over do
+    #   FlappyEngine.stop_engine()
+    #   {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
+    # else
+    Process.send_after(self(), :tick, @poll_rate)
 
-      {:noreply,
-       socket
-       |> assign(:bird_position_percentage, bird_position_percentage)
-       |> assign(:enemies, enemies)
-       |> assign(:score, score)}
-    end
+    {:noreply,
+     socket
+     |> assign(:bird_position_percentage, bird_position_percentage)
+     |> assign(:enemies, enemies)
+     |> assign(:score, score)}
   end
+
+  # end
 end

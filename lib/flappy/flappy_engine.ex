@@ -14,8 +14,19 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
+  @sprites [
+    "/images/ruby_on_rails.svg","/images/Angular_full_color_logo.svg.png"
+  ]
+
   # Game state
-  defstruct bird_position: 0, velocity: 0, game_over: false, game_height: 0, game_width: 0, score: 0, gravity: 0, enemies: []
+  defstruct bird_position: 0,
+            velocity: 0,
+            game_over: false,
+            game_height: 0,
+            game_width: 0,
+            score: 0,
+            gravity: 0,
+            enemies: []
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -30,33 +41,26 @@ defmodule Flappy.FlappyEngine do
       score: @start_score,
       gravity: gravity,
       enemies: [
-        %Enemy{
-          position: -400,
-          velocity: 100
-        },
-        %Enemy{
-          position: -200,
-          velocity: 100
-        }
+        # %Enemy{
+        #   position: -400,
+        #   velocity: 100
+        # },
       ]
     }
 
     # Start the periodic update
     :timer.send_interval(@game_tick_interval, self(), :game_tick)
     :timer.send_interval(@score_tick_interval, self(), :score_tick)
-    IO.inspect(state, label: "Initial state")
     {:ok, state}
   end
 
   @impl true
   def handle_call(:go_up, _from, %{velocity: velocity} = state) do
-    IO.inspect(state, label: "Going up")
     new_velocity = velocity + @thrust
     {:reply, state, %{state | velocity: new_velocity}}
   end
 
   def handle_call(:go_down, _from, %{velocity: velocity} = state) do
-    IO.inspect(state, label: "Going down")
     new_velocity = velocity - @thrust
     {:reply, state, %{state | velocity: new_velocity}}
   end
@@ -67,11 +71,10 @@ defmodule Flappy.FlappyEngine do
 
   @impl true
   def handle_info(:game_tick, %{game_height: game_height} = state) do
-
-    state
-    = state
-    |> update_player()
-    |> update_enemies()
+    state =
+      state
+      |> update_player()
+      |> update_enemies()
 
     # Ensure the bird doesn't go below ground level (game_height from state) or above the screen  (0)
     cond do
@@ -104,17 +107,36 @@ defmodule Flappy.FlappyEngine do
 
   defp update_enemies(state) do
     enemies =
-      state.enemies
+      state
+      |> maybe_generate_enemy()
       |> Enum.map(fn enemy ->
-        %{enemy | position: enemy.position + enemy.velocity * (@game_tick_interval / 1000)}
+        {x, y} = enemy.position
+        {vx, vy} = enemy.velocity
+        new_x = x + vx * (@game_tick_interval / 1000)
+        new_y = y + vy * (@game_tick_interval / 1000)
+        %{enemy | position: {new_x, new_y}}
       end)
 
     %{state | enemies: enemies}
+  end
+
+  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width}) do
+    if Enum.random(1..100) == 50 do
+      [
+        %Enemy{
+          position: {game_width, Enum.random(0..game_height)},
+          velocity: {Enum.random(-100..-50), 0},
+          sprite: Enum.random(@sprites)
+        }
+        | enemies
+      ]
+    else
+      enemies
     end
+  end
 
   # Public API
   def start_engine(game_height, game_width) do
-    IO.inspect(game_height, label: "Game height")
     GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width}, name: __MODULE__)
   end
 
@@ -133,9 +155,6 @@ defmodule Flappy.FlappyEngine do
   def go_down do
     GenServer.call(__MODULE__, :go_down)
   end
-
-  # defp enemies do
-  # end
 end
 
 ### Thoughts I had last night
