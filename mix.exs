@@ -52,7 +52,8 @@ defmodule Flappy.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:styler, "~> 1.0.0-rc.1", only: [:dev, :test], runtime: false}
+      {:styler, "~> 1.0.0-rc.1", only: [:dev, :test], runtime: false},
+      {:elixir_uuid, "~> 1.2"}
     ]
   end
 

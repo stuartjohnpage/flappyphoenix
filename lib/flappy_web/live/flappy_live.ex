@@ -15,9 +15,13 @@ defmodule FlappyWeb.FlappyLive do
       >
         <p class="text-white text-4xl">Get ready to play Flappy Phoenix!</p>
         <br />
-        <p class="text-white text-2xl">Don't let the 🐦‍🔥 fly too high, or hit the ground!</p>
+        <p class="text-white text-2xl">Don't let the 🐦‍🔥 fly off of the screen!</p>
         <br />
-        <p class="text-white text-2xl">Used the arrow keys (⬆️ and ⬇️) to move up and down!</p>
+        <p class="text-white text-2xl">Oh, and don't let those other frameworks touch you!</p>
+        <br />
+        <p class="text-white text-2xl">
+          Use the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
+        </p>
         <br />
         <p class="text-white text-2xl">👀 Good luck!</p>
         <.button phx-click="start_game" class="bg-blue-500 rounded mt-10">
@@ -43,14 +47,14 @@ defmodule FlappyWeb.FlappyLive do
         <div
           :if={!@game_over && @game_started}
           id="bird-container"
-          phx-window-keydown="vertical_move"
-          style={"position: absolute; top: #{@bird_position_percentage}%"}
+          phx-window-keydown="player_move"
+          style={"position: absolute; top: #{@bird_y_position_percentage}%; left: #{@bird_x_position_percentage}%;"}
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
         <%= for enemy <- @enemies do %>
           <div
-            id="enemy-container"
+            id={"enemy-container-#{enemy.id}"}
             class="absolute"
             style={"position: absolute; right: #{100 - elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
           >
@@ -70,7 +74,8 @@ defmodule FlappyWeb.FlappyLive do
     {:ok,
      socket
      |> assign(:enemies, [])
-     |> assign(:bird_position_percentage, 0)
+     |> assign(:bird_y_position_percentage, 0)
+     |> assign(:bird_x_position_percentage, 0)
      |> assign(:game_over, false)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
@@ -83,7 +88,7 @@ defmodule FlappyWeb.FlappyLive do
     flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      bird_position: bird_position,
+      player_position: {x_position, y_position},
       game_over: game_over,
       game_height: game_height,
       score: score,
@@ -94,11 +99,13 @@ defmodule FlappyWeb.FlappyLive do
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
-    bird_position_percentage = bird_position / game_height * 100
+    bird_y_position_percentage = y_position / game_height * 100
+    bird_x_position_percentage = x_position / game_width * 100
 
     {:noreply,
      socket
-     |> assign(:bird_position_percentage, bird_position_percentage)
+     |> assign(:bird_y_position_percentage, bird_y_position_percentage)
+     |> assign(:bird_y_position_percentage, bird_x_position_percentage)
      |> assign(:flappy_engine, flappy_engine_pid)
      |> assign(:enemies, enemies)
      |> assign(:score, score)
@@ -113,61 +120,77 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
-    %{bird_position: bird_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{player_position: {x_position, y_position}, velocity: _velocity, game_over: game_over, game_height: game_height} =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = bird_position / game_height * 100
+    bird_y_position_percentage = y_position / game_height * 100
+    bird_x_position_percentage = x_position / game_width * 100
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
     {:noreply,
      socket
-     |> assign(:bird_position_percentage, bird_position_percentage)
+     |> assign(:bird_y_position_percentage, bird_y_position_percentage)
+     |> assign(:bird_x_position_percentage, bird_x_position_percentage)
      |> assign(:flappy_engine, flappy_engine_pid)
      |> assign(:game_over, game_over)}
   end
 
-  def handle_event("vertical_move", %{"key" => "ArrowUp"}, socket) do
+  def handle_event("player_move", %{"key" => "ArrowUp"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_up()
 
     {:noreply, socket}
   end
 
-  def handle_event("vertical_move", %{"key" => "ArrowDown"}, socket) do
+  def handle_event("player_move", %{"key" => "ArrowDown"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_down()
 
     {:noreply, socket}
   end
 
-  def handle_event("vertical_move", _, socket) do
+  def handle_event("player_move", %{"key" => "ArrowRight"}, socket) do
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_right()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("player_move", %{"key" => "ArrowLeft"}, socket) do
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_left()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("player_move", _, socket) do
     {:noreply, socket}
   end
 
   def handle_info(:tick, socket) do
     %{
-      bird_position: bird_position,
+      player_position: {x_position, y_position},
       game_over: game_over,
       game_height: game_height,
+      game_width: game_width,
       enemies: enemies,
       score: score
     } =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = bird_position / game_height * 100
+    bird_y_position_percentage = y_position / game_height * 100
+    bird_x_position_percentage = x_position / game_width * 100
 
-    # if game_over do
-    #   FlappyEngine.stop_engine()
-    #   {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
-    # else
-    Process.send_after(self(), :tick, @poll_rate)
+    if game_over do
+      FlappyEngine.stop_engine()
+      {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
+    else
+      Process.send_after(self(), :tick, @poll_rate)
 
-    {:noreply,
-     socket
-     |> assign(:bird_position_percentage, bird_position_percentage)
-     |> assign(:enemies, enemies)
-     |> assign(:score, score)}
+      {:noreply,
+       socket
+       |> assign(:bird_y_position_percentage, bird_y_position_percentage)
+       |> assign(:bird_x_position_percentage, bird_x_position_percentage)
+       |> assign(:enemies, enemies)
+       |> assign(:score, score)}
+    end
   end
-
-  # end
 end
