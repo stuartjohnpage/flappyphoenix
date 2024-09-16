@@ -15,7 +15,15 @@ defmodule Flappy.FlappyEngine do
   @start_score 0
 
   @sprites [
-    "/images/ruby_on_rails.svg","/images/Angular_full_color_logo.svg.png"
+    "/images/ruby_on_rails.svg",
+    "/images/angular.svg",
+    "/images/django.svg",
+    "/images/jquery.svg",
+    "/images/laravel.svg",
+    "/images/ember.svg",
+    "/images/react.svg",
+    "/images/vue.svg",
+    "/images/node.svg"
   ]
 
   # Game state

@@ -54,7 +54,7 @@ defmodule FlappyWeb.FlappyLive do
             class="absolute"
             style={"position: absolute; right: #{100 - elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
           >
-            <img src={"/images/ruby_on_rails.svg"} />
+            <img src={enemy.sprite} />
           </div>
         <% end %>
       </div>
