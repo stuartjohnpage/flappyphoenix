@@ -4,7 +4,7 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
-  @poll_rate 30
+  @poll_rate 15
 
   def render(assigns) do
     ~H"""
@@ -24,10 +24,22 @@ defmodule FlappyWeb.FlappyLive do
           <p class="p-4 text-4xl text-white">Play</p>
         </.button>
       </div>
+      <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
+        <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+        <%!-- start Gavin's idea --%>
+        <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
+        <%!-- end Gavin's idea --%>
+
+        <br />
+        <p class="text-white text-4xl">Your final score was <%= @score %></p>
+        <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
+          <p class="p-4 text-4xl text-white">Play Again?</p>
+        </.button>
+      </div>
       <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
         <p class="text-white text-4xl">Score: <%= @score %></p>
       </div>
-      <div id="game-area" class="game-area relative w-full" style={"height: #{@game_height}px;"}>
+      <div id="game-area" class="game-area w-screen h-screen">
         <div
           :if={!@game_over && @game_started}
           id="bird-container"
@@ -36,21 +48,15 @@ defmodule FlappyWeb.FlappyLive do
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
         </div>
-        <div>
-          <img src={~p"/images/ruby_on_rails.svg"} />
-        </div>
-        <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
-          <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
-          <%!-- start Gavin's idea --%>
-          <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
-          <%!-- end Gavin's idea --%>
-
-          <br />
-          <p class="text-white text-4xl">Your final score was <%= @score %></p>
-          <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
-            <p class="p-4 text-4xl text-white">Play Again?</p>
-          </.button>
-        </div>
+        <%= for enemy <- @enemies do %>
+          <div
+            id="enemy-container"
+            class="absolute"
+            style={"position: absolute; right: #{100 - elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
+          >
+            <img src={enemy.sprite} />
+          </div>
+        <% end %>
       </div>
     </div>
     """
@@ -59,38 +65,42 @@ defmodule FlappyWeb.FlappyLive do
   @spec mount(any(), any(), Phoenix.LiveView.Socket.t()) :: {:ok, map()}
   def mount(_params, _session, socket) do
     game_height = get_connect_params(socket)["viewport_height"] || 0
+    game_width = get_connect_params(socket)["viewport_width"] || 0
 
     {:ok,
      socket
+     |> assign(:enemies, [])
      |> assign(:bird_position_percentage, 0)
      |> assign(:game_over, false)
      |> assign(:game_height, game_height)
+     |> assign(:game_width, game_width)
      |> assign(:game_started, false)
      |> assign(:score, 0)
      |> assign(:game_height, game_height)}
   end
 
-  def handle_event("start_game", _, %{assigns: %{game_height: game_height}} = socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
+  def handle_event("start_game", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      position: y_position,
-      velocity: _velocity,
+      bird_position: bird_position,
       game_over: game_over,
       game_height: game_height,
-      score: score
+      score: score,
+      enemies: enemies
     } =
       FlappyEngine.get_game_state()
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
     {:noreply,
      socket
      |> assign(:bird_position_percentage, bird_position_percentage)
      |> assign(:flappy_engine, flappy_engine_pid)
+     |> assign(:enemies, enemies)
      |> assign(:score, score)
      |> assign(:game_over, game_over)
      |> assign(:game_started, true)}
@@ -100,13 +110,13 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_height: height)}
   end
 
-  def handle_event("play_again", _, %{assigns: %{game_height: game_height}} = socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height)
+  def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
+    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
-    %{position: y_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{bird_position: bird_position, velocity: _velocity, game_over: game_over, game_height: game_height} =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
@@ -136,26 +146,28 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info(:tick, socket) do
     %{
-      position: y_position,
-      velocity: _velocity,
+      bird_position: bird_position,
       game_over: game_over,
       game_height: game_height,
+      enemies: enemies,
       score: score
     } =
       FlappyEngine.get_game_state()
 
-    bird_position_percentage = y_position / game_height * 100
+    bird_position_percentage = bird_position / game_height * 100
 
-    if game_over do
-      FlappyEngine.stop_engine()
-      {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
-    else
-      Process.send_after(self(), :tick, @poll_rate)
+    # if game_over do
+    #   FlappyEngine.stop_engine()
+    #   {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
+    # else
+    Process.send_after(self(), :tick, @poll_rate)
 
-      {:noreply,
-       socket
-       |> assign(:bird_position_percentage, bird_position_percentage)
-       |> assign(:score, score)}
-    end
+    {:noreply,
+     socket
+     |> assign(:bird_position_percentage, bird_position_percentage)
+     |> assign(:enemies, enemies)
+     |> assign(:score, score)}
   end
+
+  # end
 end
