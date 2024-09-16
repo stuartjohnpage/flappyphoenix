@@ -9,7 +9,7 @@ defmodule Flappy.FlappyEngine do
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
-  @init_velocity 0
+  @init_velocity {0, 0}
   @gravity 250
   @thrust -100
   @start_score 0
@@ -27,8 +27,8 @@ defmodule Flappy.FlappyEngine do
   ]
 
   # Game state
-  defstruct bird_position: 0,
-            velocity: 0,
+  defstruct player_position: {0, 0},
+            velocity: {0, 0},
             game_over: false,
             game_height: 0,
             game_width: 0,
@@ -38,22 +38,17 @@ defmodule Flappy.FlappyEngine do
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
-    gravity = @gravity / game_height * 1000
+    gravity = @gravity / game_height * 500
 
     state = %__MODULE__{
-      bird_position: game_height / 2,
+      player_position: {0, game_height / 2},
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
       game_width: game_width,
       score: @start_score,
       gravity: gravity,
-      enemies: [
-        # %Enemy{
-        #   position: -400,
-        #   velocity: 100
-        # },
-      ]
+      enemies: []
     }
 
     # Start the periodic update
@@ -63,14 +58,24 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_call(:go_up, _from, %{velocity: velocity} = state) do
-    new_velocity = velocity + @thrust
-    {:reply, state, %{state | velocity: new_velocity}}
+  def handle_call(:go_up, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+    new_velocity = y_velocity + @thrust
+    {:reply, state, %{state | velocity: {x_velocity, new_velocity}}}
   end
 
-  def handle_call(:go_down, _from, %{velocity: velocity} = state) do
-    new_velocity = velocity - @thrust
-    {:reply, state, %{state | velocity: new_velocity}}
+  def handle_call(:go_down, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+    new_velocity = y_velocity - @thrust
+    {:reply, state, %{state | velocity: {x_velocity, new_velocity}}}
+  end
+
+  def handle_call(:go_right, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+    new_velocity = x_velocity - @thrust
+    {:reply, state, %{state | velocity: {new_velocity, y_velocity}}}
+  end
+
+  def handle_call(:go_left, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+    new_velocity = x_velocity + @thrust
+    {:reply, state, %{state | velocity: {new_velocity, y_velocity}}}
   end
 
   def handle_call(:get_state, _from, state) do
@@ -78,20 +83,33 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:game_tick, %{game_height: game_height} = state) do
+  def handle_info(:game_tick, %{game_height: game_height, game_width: game_width} = state) do
     state =
       state
       |> update_player()
       |> update_enemies()
 
+    {x_pos, y_pos} = state.player_position
     # Ensure the bird doesn't go below ground level (game_height from state) or above the screen  (0)
     cond do
-      state.bird_position < 0 ->
-        state = %{state | bird_position: 0, velocity: 0, game_over: true}
+      # if y_pos is less than 0, set it to 0
+      y_pos < 0 ->
+        state = %{state | player_position: {x_pos, 0}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
-      state.bird_position > game_height - 100 ->
-        state = %{state | bird_position: game_height, velocity: 0, game_over: true}
+      # if y_pos is greater than game_height, set it to game_height
+      y_pos > game_height - 100 ->
+        state = %{state | player_position: {x_pos, game_height}, velocity: {0, 0}, game_over: true}
+        {:noreply, state}
+
+      # if x_pos is less than 0, set it to 0
+      x_pos < 0 ->
+        state = %{state | player_position: {0, y_pos}, velocity: {0, 0}, game_over: true}
+        {:noreply, state}
+
+      # if x_pos is greater than game_width, set it to game_width
+      x_pos > game_width - 100 ->
+        state = %{state | player_position: {game_width, y_pos}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
       true ->
@@ -104,13 +122,14 @@ defmodule Flappy.FlappyEngine do
     {:noreply, state}
   end
 
-  defp update_player(%{bird_position: bird_position, velocity: velocity, gravity: gravity} = state) do
-    # Calculate the new velocity considering gravity
-    new_velocity = velocity + gravity * (@game_tick_interval / 1000)
-    # Calculate the new bird_position
-    new_position = bird_position + new_velocity * (@game_tick_interval / 1000)
+  defp update_player(
+         %{player_position: {x_position, y_position}, velocity: {x_velocity, y_velocity}, gravity: gravity} = state
+       ) do
+    new_y_velocity = y_velocity + gravity * (@game_tick_interval / 1000)
+    new_y_position = y_position + new_y_velocity * (@game_tick_interval / 1000)
+    new_x_position = x_position + x_velocity * (@game_tick_interval / 1000)
 
-    %{state | bird_position: new_position, velocity: new_velocity}
+    %{state | player_position: {new_x_position, new_y_position}, velocity: {x_velocity, new_y_velocity}}
   end
 
   defp update_enemies(state) do
@@ -128,13 +147,21 @@ defmodule Flappy.FlappyEngine do
     %{state | enemies: enemies}
   end
 
-  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width}) do
-    if Enum.random(1..100) == 50 do
+  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
+    # The game gets harder as the score increases
+    difficultly_rating = if score < 495, do: score, else: 496
+    difficultly_cap = 500 - difficultly_rating
+
+    if Enum.random(1..difficultly_cap) == 4 do
+      # Generate a new enemy
+      max_generation_height = round(game_height - game_height / 4)
+
       [
         %Enemy{
-          position: {game_width, Enum.random(0..game_height)},
+          position: {game_width, Enum.random(0..max_generation_height)},
           velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@sprites)
+          sprite: Enum.random(@sprites),
+          id: UUID.uuid4()
         }
         | enemies
       ]
@@ -162,6 +189,14 @@ defmodule Flappy.FlappyEngine do
 
   def go_down do
     GenServer.call(__MODULE__, :go_down)
+  end
+
+  def go_right do
+    GenServer.call(__MODULE__, :go_right)
+  end
+
+  def go_left do
+    GenServer.call(__MODULE__, :go_left)
   end
 end
 
