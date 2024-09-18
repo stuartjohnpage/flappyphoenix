@@ -5,7 +5,7 @@ defmodule Flappy.FlappyEngine do
   alias Flappy.Enemy
 
   # TIME VARIABLES
-  @game_tick_interval 30
+  @game_tick_interval 15
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
@@ -14,20 +14,16 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @player_size {124, 128}
-  @enemy_size {200, 200}
-
   @sprites [
-    "/images/test_red.svg"
-    # "/images/ruby_on_rails.svg",
-    # "/images/angular.svg",
-    # "/images/django.svg",
-    # "/images/jquery.svg",
-    # "/images/laravel.svg",
-    # "/images/ember.svg",
-    # "/images/react.svg",
-    # "/images/vue.svg",
-    # "/images/node.svg"
+    "/images/ruby_on_rails.svg",
+    "/images/angular.svg",
+    "/images/django.svg",
+    "/images/jquery.svg",
+    "/images/laravel.svg",
+    "/images/ember.svg",
+    "/images/react.svg",
+    "/images/vue.svg",
+    "/images/node.svg"
   ]
 
   # Game state
@@ -52,14 +48,7 @@ defmodule Flappy.FlappyEngine do
       game_width: game_width,
       score: @start_score,
       gravity: gravity,
-      enemies: [
-        %Enemy{
-          position: {game_width, 400},
-          velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@sprites),
-          id: UUID.uuid4()
-        }
-      ]
+      enemies: []
     }
 
     # Start the periodic update
@@ -94,44 +83,33 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:game_tick, state) do
+  def handle_info(:game_tick, %{game_height: game_height, game_width: game_width} = state) do
     state =
       state
       |> update_player()
       |> update_enemies()
-      |> check_for_collisions()
-
-    IO.inspect(state, label: "State After Update")
 
     {x_pos, y_pos} = state.player_position
-
+    # Ensure the bird doesn't go below ground level (game_height from state) or above the screen  (0)
     cond do
+      # if y_pos is less than 0, set it to 0
       y_pos < 0 ->
         state = %{state | player_position: {x_pos, 0}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
-      y_pos > state.game_height - elem(@player_size, 1) ->
-        state = %{
-          state
-          | player_position: {x_pos, state.game_height - elem(@player_size, 1)},
-            velocity: {0, 0},
-            game_over: true
-        }
-
+      # if y_pos is greater than game_height, set it to game_height
+      y_pos > game_height - 100 ->
+        state = %{state | player_position: {x_pos, game_height}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
+      # if x_pos is less than 0, set it to 0
       x_pos < 0 ->
         state = %{state | player_position: {0, y_pos}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
-      x_pos > state.game_width - elem(@player_size, 0) ->
-        state = %{
-          state
-          | player_position: {state.game_width - elem(@player_size, 0), y_pos},
-            velocity: {0, 0},
-            game_over: true
-        }
-
+      # if x_pos is greater than game_width, set it to game_width
+      x_pos > game_width - 100 ->
+        state = %{state | player_position: {game_width, y_pos}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
       true ->
@@ -142,29 +120,6 @@ defmodule Flappy.FlappyEngine do
   def handle_info(:score_tick, state) do
     state = %{state | score: state.score + 1}
     {:noreply, state}
-  end
-
-  defp check_for_collisions(state) do
-    {game_height, game_width} = {state.game_height, state.game_width}
-
-    player_hitbox = player_hitbox(state.player_position, game_height, game_width)
-    IO.inspect(player_hitbox, label: "Player Hitbox in Collision Check")
-
-    is_collision =
-      Enum.any?(state.enemies, fn enemy ->
-        enemy_box = enemy_hitbox(enemy.position, game_height, game_width)
-        IO.inspect(enemy_box, label: "Enemy Hitbox in Collision Check")
-
-        Flappy.Hitbox.overlap?(player_hitbox, enemy_box)
-      end)
-
-    IO.inspect(is_collision, label: "Collision Detected")
-
-    if is_collision do
-      %{state | game_over: true}
-    else
-      state
-    end
   end
 
   defp update_player(
@@ -192,13 +147,12 @@ defmodule Flappy.FlappyEngine do
     %{state | enemies: enemies}
   end
 
-  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: _score}) do
+  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
     # The game gets harder as the score increases
-    # difficultly_rating = if score < 495, do: score, else: 496
-    # difficultly_cap = 500 - difficultly_rating
+    difficultly_rating = if score < 495, do: score, else: 496
+    difficultly_cap = 500 - difficultly_rating
 
-    # if Enum.random(1..difficultly_cap) == 4 do
-    if Enum.random(1..10_000) == 4 do
+    if Enum.random(1..difficultly_cap) == 4 do
       # Generate a new enemy
       max_generation_height = round(game_height - game_height / 4)
 
@@ -214,22 +168,6 @@ defmodule Flappy.FlappyEngine do
     else
       enemies
     end
-  end
-
-  defp player_hitbox({x, y}, game_height, game_width) do
-    width = elem(@player_size, 0) / game_width * 100
-    height = elem(@player_size, 1) / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
-    {scaled_x, scaled_y, width, height}
-  end
-
-  defp enemy_hitbox({x, y}, game_height, game_width) do
-    width = elem(@enemy_size, 0) / game_width * 100
-    height = elem(@enemy_size, 1) / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
-    {scaled_x, scaled_y, width, height}
   end
 
   # Public API
