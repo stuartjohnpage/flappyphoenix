@@ -44,17 +44,14 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @score %></p>
       </div>
       <div id="game-area" class="game-area w-screen h-screen">
-        <%= IO.inspect(@bird_x_position_percentage) %>
-        <br />
-        <%= IO.inspect(@bird_y_position_percentage) %>
         <div
           :if={!@game_over && @game_started}
           id="bird-container"
           phx-window-keydown="player_move"
           style={"position: absolute; top: #{@bird_y_position_percentage}%; left: #{@bird_x_position_percentage}%;"}
         >
-          <%!-- <img src={~p"/images/phoenix_flipped.svg"} /> --%>
-          <img src={~p"/images/test_blue.svg"} />
+          <img src={~p"/images/phoenix_flipped.svg"} />
+          <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
         <%= for enemy <- @enemies do %>
@@ -63,7 +60,7 @@ defmodule FlappyWeb.FlappyLive do
             class="absolute"
             style={"position: absolute; left: #{elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
           >
-            <img src={enemy.sprite} />
+            <img src={enemy.sprite.image} />
           </div>
         <% end %>
       </div>
