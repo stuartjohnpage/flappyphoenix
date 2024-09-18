@@ -51,14 +51,16 @@ defmodule FlappyWeb.FlappyLive do
           style={"position: absolute; top: #{@bird_y_position_percentage}%; left: #{@bird_x_position_percentage}%;"}
         >
           <img src={~p"/images/phoenix_flipped.svg"} />
+          <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
+
         <%= for enemy <- @enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
-            style={"position: absolute; right: #{100 - elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
+            style={"position: absolute; left: #{elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
           >
-            <img src={enemy.sprite} />
+            <img src={enemy.sprite.image} />
           </div>
         <% end %>
       </div>
