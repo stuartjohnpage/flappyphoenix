@@ -45,20 +45,19 @@ defmodule FlappyWeb.FlappyLive do
       </div> --%>
       <div id="game-area" class="game-area w-screen h-screen">
         <div
-
           id="bird-container"
           phx-window-keydown="player_move"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={~p"/images/phoenix_flipped.svg"} />
+          <img src={~p"/images/phoenix_flipped-cropped.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
         <%= for %{position: {x_pos, y_pos}} = enemy <- @enemies do %>
-        <%= IO.inspect(x_pos, label: :here) %>
-        <br />
-        <%= IO.inspect(y_pos, label: :here) %>
-        <br />
+          <%= IO.inspect(x_pos, label: :here) %>
+          <br />
+          <%= IO.inspect(y_pos, label: :here) %>
+          <br />
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
@@ -107,14 +106,19 @@ defmodule FlappyWeb.FlappyLive do
     bird_x_position_percentage = x_position / game_width * 100
     bird_y_position_percentage = y_position / game_height * 100
 
+    updated_enemies =
+      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
+        {x_pos, y_pos} = position
+        enemy_x_position_percentage = x_pos / game_width * 100
+        enemy_y_position_percentage = y_pos / game_height * 100
 
-    updated_enemies = Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy->
-      {x_pos, y_pos} = position
-      enemy_x_position_percentage = x_pos / game_width * 100
-      enemy_y_position_percentage = y_pos / game_height * 100
-
-      %{enemy | position: {enemy_x_position_percentage, enemy_y_position_percentage}, velocity: velocity, sprite: sprite}
-    end)
+        %{
+          enemy
+          | position: {enemy_x_position_percentage, enemy_y_position_percentage},
+            velocity: velocity,
+            sprite: sprite
+        }
+      end)
 
     IO.inspect(updated_enemies, label: :here)
 
@@ -188,20 +192,37 @@ defmodule FlappyWeb.FlappyLive do
       game_height: game_height,
       game_width: game_width,
       enemies: enemies,
-      score: score
+      score: score,
+      player_size: player_size
     } =
       FlappyEngine.get_game_state()
+
     bird_x_position_percentage = x_position / game_width * 100
     bird_y_position_percentage = y_position / game_height * 100
-    updated_enemies = Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy->
-      {x_pos, y_pos} = position
-      enemy_x_position_percentage = x_pos / game_width * 100
-      enemy_y_position_percentage = y_pos / game_height * 100
 
-      %{enemy | position: {enemy_x_position_percentage, enemy_y_position_percentage}, velocity: velocity, sprite: sprite}
-    end)
+    updated_enemies =
+      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
+        {x_pos, y_pos} = position
+        enemy_x_position_percentage = x_pos / game_width * 100
+        enemy_y_position_percentage = y_pos / game_height * 100
 
-    collision? = check_for_collisions(updated_enemies, bird_x_position_percentage, bird_y_position_percentage, game_width, game_height)
+        %{
+          enemy
+          | position: {enemy_x_position_percentage, enemy_y_position_percentage},
+            velocity: velocity,
+            sprite: sprite
+        }
+      end)
+
+    collision? =
+      check_for_collisions(
+        updated_enemies,
+        bird_x_position_percentage,
+        bird_y_position_percentage,
+        game_width,
+        game_height,
+        player_size
+      )
 
     if game_over or collision? do
       FlappyEngine.stop_engine()
@@ -218,23 +239,20 @@ defmodule FlappyWeb.FlappyLive do
     end
   end
 
-  defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height) do
-    player_length = 124 / game_width * 100
-    player_height = 124 / game_height * 100
-    enemy_length = 200 / game_width * 100
-    enemy_height = 200 /game_height * 100
-
-
+  defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height, player_size) do
+    {player_length, player_height} = player_size
+    player_length = player_length / game_width * 100
+    player_height = player_height / game_height * 100
     player_hitbox = {bird_x, bird_y, player_length, player_height}
-    |> IO.inspect()
 
     Enum.any?(enemies, fn enemy ->
       {enemy_x, enemy_y} = enemy.position
+      {width, height} = enemy.sprite.size
+      enemy_length = width / game_width * 100
+      enemy_height = height / game_height * 100
       enemy_hitbox = {enemy_x, enemy_y, enemy_length, enemy_height}
-      |> IO.inspect()
 
       Flappy.Hitbox.overlap?(player_hitbox, enemy_hitbox)
     end)
-    |> IO.inspect()
   end
 end

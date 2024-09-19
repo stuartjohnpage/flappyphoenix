@@ -14,11 +14,11 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @player_size {100, 100}
+  @player_size {124, 89}
 
   @sprites [
-    %{image: "/images/test_red.svg", size: {200, 200}},
-    # %{image: "/images/ruby_on_rails.svg", size: {205, 77}},
+    # %{image: "/images/test_red.svg", size: {200, 200}},
+    %{image: "/images/ruby_on_rails-cropped.svg", size: {68.6, 141}}
     # %{image: "/images/angular.svg", size: {100, 100}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
@@ -37,7 +37,8 @@ defmodule Flappy.FlappyEngine do
             game_width: 0,
             score: 0,
             gravity: 0,
-            enemies: []
+            enemies: [],
+            player_size: 0
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -45,20 +46,14 @@ defmodule Flappy.FlappyEngine do
 
     state = %__MODULE__{
       player_position: {0, game_height / 2},
+      player_size: @player_size,
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
       game_width: game_width,
       score: @start_score,
       gravity: gravity,
-      enemies: [
-        %Enemy{
-          position: {game_width, game_height / 2},
-          velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@sprites),
-          id: UUID.uuid4()
-        }
-      ]
+      enemies: []
     }
 
     # Start the periodic update
@@ -171,7 +166,6 @@ defmodule Flappy.FlappyEngine do
     difficultly_cap = 500 - difficultly_rating
 
     if Enum.random(1..difficultly_cap) == 4 do
-      # if Enum.random(1..10_000) == 4 do
       # Generate a new enemy
       max_generation_height = round(game_height - game_height / 4)
 
@@ -188,23 +182,6 @@ defmodule Flappy.FlappyEngine do
       enemies
     end
   end
-
-  # defp player_hitbox({x, y}, game_height, game_width) do
-  #   width = elem(@player_size, 0) / game_width * 100
-  #   height = elem(@player_size, 1) / game_height * 100
-  #   scaled_x = x / game_width * 100
-  #   scaled_y = y / game_height * 100
-  #   {scaled_x, scaled_y, width, height}
-  # end
-
-  # defp enemy_hitbox({x, y}, game_height, game_width, {width, height}) do
-  #   width = width / game_width * 100
-  #   height = height / game_height * 100
-  #   scaled_x = x / game_width * 100
-  #   scaled_y = y / game_height * 100
-
-  #   {scaled_x, scaled_y, width, height}
-  # end
 
   # Public API
   def start_engine(game_height, game_width) do
