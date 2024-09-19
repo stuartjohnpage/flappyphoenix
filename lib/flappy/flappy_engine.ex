@@ -17,9 +17,9 @@ defmodule Flappy.FlappyEngine do
   @player_size {100, 100}
 
   @sprites [
-    # %{image: "/images/test_red.svg", size: {205, 77}},
-    %{image: "/images/ruby_on_rails.svg", size: {205, 77}},
-    %{image: "/images/angular.svg", size: {100, 100}}
+    %{image: "/images/test_red.svg", size: {200, 200}},
+    # %{image: "/images/ruby_on_rails.svg", size: {205, 77}},
+    # %{image: "/images/angular.svg", size: {100, 100}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
@@ -53,7 +53,7 @@ defmodule Flappy.FlappyEngine do
       gravity: gravity,
       enemies: [
         %Enemy{
-          position: {game_width, 400},
+          position: {game_width, game_height / 2},
           velocity: {Enum.random(-100..-50), 0},
           sprite: Enum.random(@sprites),
           id: UUID.uuid4()
@@ -98,7 +98,6 @@ defmodule Flappy.FlappyEngine do
       state
       |> update_player()
       |> update_enemies()
-      |> check_for_collisions()
 
     {x_pos, y_pos} = state.player_position
 
@@ -139,25 +138,6 @@ defmodule Flappy.FlappyEngine do
   def handle_info(:score_tick, state) do
     state = %{state | score: state.score + 1}
     {:noreply, state}
-  end
-
-  defp check_for_collisions(state) do
-    {game_height, game_width} = {state.game_height, state.game_width}
-
-    player_hitbox = player_hitbox(state.player_position, game_height, game_width)
-
-    is_collision =
-      Enum.any?(state.enemies, fn enemy ->
-        enemy_box = enemy_hitbox(enemy.position, game_height, game_width, enemy.sprite.size)
-
-        Flappy.Hitbox.overlap?(player_hitbox, enemy_box)
-      end)
-
-    if is_collision do
-      %{state | game_over: true}
-    else
-      state
-    end
   end
 
   defp update_player(
@@ -209,22 +189,22 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  defp player_hitbox({x, y}, game_height, game_width) do
-    width = elem(@player_size, 0) / game_width * 100
-    height = elem(@player_size, 1) / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
-    {scaled_x, scaled_y, width, height}
-  end
+  # defp player_hitbox({x, y}, game_height, game_width) do
+  #   width = elem(@player_size, 0) / game_width * 100
+  #   height = elem(@player_size, 1) / game_height * 100
+  #   scaled_x = x / game_width * 100
+  #   scaled_y = y / game_height * 100
+  #   {scaled_x, scaled_y, width, height}
+  # end
 
-  defp enemy_hitbox({x, y}, game_height, game_width, {width, height}) do
-    width = width / game_width * 100
-    height = height / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
+  # defp enemy_hitbox({x, y}, game_height, game_width, {width, height}) do
+  #   width = width / game_width * 100
+  #   height = height / game_height * 100
+  #   scaled_x = x / game_width * 100
+  #   scaled_y = y / game_height * 100
 
-    {scaled_x, scaled_y, width, height}
-  end
+  #   {scaled_x, scaled_y, width, height}
+  # end
 
   # Public API
   def start_engine(game_height, game_width) do
