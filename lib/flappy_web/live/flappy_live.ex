@@ -43,22 +43,21 @@ defmodule FlappyWeb.FlappyLive do
       <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
         <p class="text-white text-4xl">Score: <%= @score %></p>
       </div>
-      <div id="game-area" class="game-area w-screen h-screen">
+      <div  id="game-area" class="game-area w-screen h-screen">
         <div
-          :if={!@game_over && @game_started}
           id="bird-container"
           phx-window-keydown="player_move"
-          style={"position: absolute; top: #{@bird_y_position_percentage}%; left: #{@bird_x_position_percentage}%;"}
+          style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={~p"/images/phoenix_flipped.svg"} />
+          <img src={~p"/images/phoenix_flipped-cropped.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
-        <%= for enemy <- @enemies do %>
+        <%= for %{position: {x_pos, y_pos}} = enemy <- @enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
-            style={"position: absolute; left: #{elem(enemy.position, 0) / @game_width * 100}%; top: #{elem(enemy.position, 1) / @game_height * 100}%"}
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%"}
           >
             <img src={enemy.sprite.image} />
           </div>
@@ -76,8 +75,8 @@ defmodule FlappyWeb.FlappyLive do
     {:ok,
      socket
      |> assign(:enemies, [])
-     |> assign(:bird_y_position_percentage, 0)
      |> assign(:bird_x_position_percentage, 0)
+     |> assign(:bird_y_position_percentage, game_height / 2)
      |> assign(:game_over, false)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
@@ -100,16 +99,31 @@ defmodule FlappyWeb.FlappyLive do
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
-
-    bird_y_position_percentage = y_position / game_height * 100
     bird_x_position_percentage = x_position / game_width * 100
+    bird_y_position_percentage = y_position / game_height * 100
+
+    updated_enemies =
+      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
+        {x_pos, y_pos} = position
+        enemy_x_position_percentage = x_pos / game_width * 100
+        enemy_y_position_percentage = y_pos / game_height * 100
+
+        %{
+          enemy
+          | position: {enemy_x_position_percentage, enemy_y_position_percentage},
+            velocity: velocity,
+            sprite: sprite
+        }
+      end)
+
+    IO.inspect(updated_enemies, label: :here)
 
     {:noreply,
      socket
+     |> assign(:bird_x_position_percentage, bird_x_position_percentage)
      |> assign(:bird_y_position_percentage, bird_y_position_percentage)
-     |> assign(:bird_y_position_percentage, bird_x_position_percentage)
      |> assign(:flappy_engine, flappy_engine_pid)
-     |> assign(:enemies, enemies)
+     |> assign(:enemies, updated_enemies)
      |> assign(:score, score)
      |> assign(:game_over, game_over)
      |> assign(:game_started, true)}
@@ -174,14 +188,39 @@ defmodule FlappyWeb.FlappyLive do
       game_height: game_height,
       game_width: game_width,
       enemies: enemies,
-      score: score
+      score: score,
+      player_size: player_size
     } =
       FlappyEngine.get_game_state()
 
-    bird_y_position_percentage = y_position / game_height * 100
     bird_x_position_percentage = x_position / game_width * 100
+    bird_y_position_percentage = y_position / game_height * 100
 
-    if game_over do
+    updated_enemies =
+      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
+        {x_pos, y_pos} = position
+        enemy_x_position_percentage = x_pos / game_width * 100
+        enemy_y_position_percentage = y_pos / game_height * 100
+
+        %{
+          enemy
+          | position: {enemy_x_position_percentage, enemy_y_position_percentage},
+            velocity: velocity,
+            sprite: sprite
+        }
+      end)
+
+    collision? =
+      check_for_collisions(
+        updated_enemies,
+        bird_x_position_percentage,
+        bird_y_position_percentage,
+        game_width,
+        game_height,
+        player_size
+      )
+
+    if game_over or collision? do
       FlappyEngine.stop_engine()
       {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
     else
@@ -191,8 +230,25 @@ defmodule FlappyWeb.FlappyLive do
        socket
        |> assign(:bird_y_position_percentage, bird_y_position_percentage)
        |> assign(:bird_x_position_percentage, bird_x_position_percentage)
-       |> assign(:enemies, enemies)
+       |> assign(:enemies, updated_enemies)
        |> assign(:score, score)}
     end
+  end
+
+  defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height, player_size) do
+    {player_length, player_height} = player_size
+    player_hitbox = generate_hitbox(bird_x, bird_y, player_length, player_height, game_width, game_height)
+
+    Enum.any?(enemies, fn enemy ->
+      {enemy_x, enemy_y} = enemy.position
+      {width, height} = enemy.sprite.size
+      enemy_hitbox = generate_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
+
+      Flappy.Hitbox.overlap?(player_hitbox, enemy_hitbox)
+    end)
+  end
+
+  defp generate_hitbox(x, y, width, height, game_width, game_height) do
+    {x, y, width / game_width * 100, height / game_height * 100}
   end
 end

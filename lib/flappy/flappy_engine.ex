@@ -14,12 +14,12 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @player_size {100, 100}
+  @player_size {100, 89}
 
   @sprites [
-    # %{image: "/images/test_red.svg", size: {205, 77}},
-    %{image: "/images/ruby_on_rails.svg", size: {205, 77}},
-    %{image: "/images/angular.svg", size: {100, 100}}
+    # %{image: "/images/test_red.svg", size: {200, 200}},
+    # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
+    %{image: "/images/angular.svg", size: {90, 90}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
@@ -37,14 +37,17 @@ defmodule Flappy.FlappyEngine do
             game_width: 0,
             score: 0,
             gravity: 0,
-            enemies: []
+            enemies: [],
+            player_size: 0
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
     gravity = @gravity / game_height * 500
+    max_generation_height = round(game_height - game_height / 4)
 
     state = %__MODULE__{
       player_position: {0, game_height / 2},
+      player_size: @player_size,
       velocity: @init_velocity,
       game_over: false,
       game_height: game_height,
@@ -53,7 +56,7 @@ defmodule Flappy.FlappyEngine do
       gravity: gravity,
       enemies: [
         %Enemy{
-          position: {game_width, 400},
+          position: {game_width, Enum.random(0..max_generation_height)},
           velocity: {Enum.random(-100..-50), 0},
           sprite: Enum.random(@sprites),
           id: UUID.uuid4()
@@ -98,7 +101,6 @@ defmodule Flappy.FlappyEngine do
       state
       |> update_player()
       |> update_enemies()
-      |> check_for_collisions()
 
     {x_pos, y_pos} = state.player_position
 
@@ -141,25 +143,6 @@ defmodule Flappy.FlappyEngine do
     {:noreply, state}
   end
 
-  defp check_for_collisions(state) do
-    {game_height, game_width} = {state.game_height, state.game_width}
-
-    player_hitbox = player_hitbox(state.player_position, game_height, game_width)
-
-    is_collision =
-      Enum.any?(state.enemies, fn enemy ->
-        enemy_box = enemy_hitbox(enemy.position, game_height, game_width, enemy.sprite.size)
-
-        Flappy.Hitbox.overlap?(player_hitbox, enemy_box)
-      end)
-
-    if is_collision do
-      %{state | game_over: true}
-    else
-      state
-    end
-  end
-
   defp update_player(
          %{player_position: {x_position, y_position}, velocity: {x_velocity, y_velocity}, gravity: gravity} = state
        ) do
@@ -179,7 +162,12 @@ defmodule Flappy.FlappyEngine do
         {vx, vy} = enemy.velocity
         new_x = x + vx * (@game_tick_interval / 1000)
         new_y = y + vy * (@game_tick_interval / 1000)
+
         %{enemy | position: {new_x, new_y}}
+      end)
+      |> Enum.reject(fn enemy ->
+        {x, _y} = enemy.position
+        x < 0 - state.game_width / 100 * 25
       end)
 
     %{state | enemies: enemies}
@@ -191,7 +179,6 @@ defmodule Flappy.FlappyEngine do
     difficultly_cap = 500 - difficultly_rating
 
     if Enum.random(1..difficultly_cap) == 4 do
-      # if Enum.random(1..10_000) == 4 do
       # Generate a new enemy
       max_generation_height = round(game_height - game_height / 4)
 
@@ -207,23 +194,6 @@ defmodule Flappy.FlappyEngine do
     else
       enemies
     end
-  end
-
-  defp player_hitbox({x, y}, game_height, game_width) do
-    width = elem(@player_size, 0) / game_width * 100
-    height = elem(@player_size, 1) / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
-    {scaled_x, scaled_y, width, height}
-  end
-
-  defp enemy_hitbox({x, y}, game_height, game_width, {width, height}) do
-    width = width / game_width * 100
-    height = height / game_height * 100
-    scaled_x = x / game_width * 100
-    scaled_y = y / game_height * 100
-
-    {scaled_x, scaled_y, width, height}
   end
 
   # Public API
