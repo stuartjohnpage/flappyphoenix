@@ -14,12 +14,12 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @player_size {124, 89}
+  @player_size {100, 89}
 
   @sprites [
     # %{image: "/images/test_red.svg", size: {200, 200}},
-    %{image: "/images/ruby_on_rails-cropped.svg", size: {68.6, 141}}
-    # %{image: "/images/angular.svg", size: {100, 100}}
+    # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
+    %{image: "/images/angular.svg", size: {90, 90}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
@@ -43,6 +43,7 @@ defmodule Flappy.FlappyEngine do
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
     gravity = @gravity / game_height * 500
+    max_generation_height = round(game_height - game_height / 4)
 
     state = %__MODULE__{
       player_position: {0, game_height / 2},
@@ -53,7 +54,14 @@ defmodule Flappy.FlappyEngine do
       game_width: game_width,
       score: @start_score,
       gravity: gravity,
-      enemies: []
+      enemies: [
+        %Enemy{
+          position: {game_width, Enum.random(0..max_generation_height)},
+          velocity: {Enum.random(-100..-50), 0},
+          sprite: Enum.random(@sprites),
+          id: UUID.uuid4()
+        }
+      ]
     }
 
     # Start the periodic update
@@ -154,7 +162,12 @@ defmodule Flappy.FlappyEngine do
         {vx, vy} = enemy.velocity
         new_x = x + vx * (@game_tick_interval / 1000)
         new_y = y + vy * (@game_tick_interval / 1000)
+
         %{enemy | position: {new_x, new_y}}
+      end)
+      |> Enum.reject(fn enemy ->
+        {x, _y} = enemy.position
+        x < 0 - state.game_width / 100 * 25
       end)
 
     %{state | enemies: enemies}

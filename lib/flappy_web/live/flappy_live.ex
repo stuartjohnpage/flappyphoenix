@@ -40,10 +40,10 @@ defmodule FlappyWeb.FlappyLive do
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
       </div>
-      <%!-- <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
+      <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
         <p class="text-white text-4xl">Score: <%= @score %></p>
-      </div> --%>
-      <div id="game-area" class="game-area w-screen h-screen">
+      </div>
+      <div  id="game-area" class="game-area w-screen h-screen">
         <div
           id="bird-container"
           phx-window-keydown="player_move"
@@ -54,10 +54,6 @@ defmodule FlappyWeb.FlappyLive do
         </div>
 
         <%= for %{position: {x_pos, y_pos}} = enemy <- @enemies do %>
-          <%= IO.inspect(x_pos, label: :here) %>
-          <br />
-          <%= IO.inspect(y_pos, label: :here) %>
-          <br />
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
@@ -79,8 +75,8 @@ defmodule FlappyWeb.FlappyLive do
     {:ok,
      socket
      |> assign(:enemies, [])
-     |> assign(:bird_y_position_percentage, 0)
      |> assign(:bird_x_position_percentage, 0)
+     |> assign(:bird_y_position_percentage, game_height / 2)
      |> assign(:game_over, false)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
@@ -241,18 +237,18 @@ defmodule FlappyWeb.FlappyLive do
 
   defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height, player_size) do
     {player_length, player_height} = player_size
-    player_length = player_length / game_width * 100
-    player_height = player_height / game_height * 100
-    player_hitbox = {bird_x, bird_y, player_length, player_height}
+    player_hitbox = generate_hitbox(bird_x, bird_y, player_length, player_height, game_width, game_height)
 
     Enum.any?(enemies, fn enemy ->
       {enemy_x, enemy_y} = enemy.position
       {width, height} = enemy.sprite.size
-      enemy_length = width / game_width * 100
-      enemy_height = height / game_height * 100
-      enemy_hitbox = {enemy_x, enemy_y, enemy_length, enemy_height}
+      enemy_hitbox = generate_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
 
       Flappy.Hitbox.overlap?(player_hitbox, enemy_hitbox)
     end)
+  end
+
+  defp generate_hitbox(x, y, width, height, game_width, game_height) do
+    {x, y, width / game_width * 100, height / game_height * 100}
   end
 end
