@@ -14,7 +14,6 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-
   @player_size {128, 124}
 
   @sprites [

@@ -237,22 +237,17 @@ defmodule FlappyWeb.FlappyLive do
     {player_length, player_height} = player_size
 
     player_hitbox =
-      bird_x
-      |> generate_player_hitbox(bird_y, player_length, player_height, game_width, game_height)
+      generate_player_hitbox(bird_x, bird_y, player_length, player_height, game_width, game_height)
 
     Enum.any?(enemies, fn enemy ->
       {enemy_x, enemy_y} = enemy.position
       {width, height} = enemy.sprite.size
 
       enemy_hitbox =
-        enemy_x
-        |> generate_enemy_hitbox(enemy_y, width, height, game_width, game_height)
+        generate_enemy_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
 
-      IO.inspect(player_hitbox, label: :player)
-      IO.inspect(enemy_hitbox, label: :enemy)
-
-      Polygons.Detection.collision?(player_hitbox, enemy_hitbox)
-      |> IO.inspect()
+      player_hitbox
+      |> Polygons.Detection.collision?(enemy_hitbox)
     end)
   end
 
@@ -262,10 +257,14 @@ defmodule FlappyWeb.FlappyLive do
 
     {x, y, w, h} = centre_hitbox({x, y, w, h})
 
-    point_one = {x, y + (0.6 * h)} # bird back
-    point_two = {x + (0.9 * w), y + (0.1 * h)} # bird front top
-    point_three = {x + w, y + (0.2 * h)} # bird front side
-    point_four = {x + (0.5*w), y + 0.6*h} #bird bottom
+    # bird back
+    point_one = {x, y + 0.6 * h}
+    # bird front top
+    point_two = {x + 0.9 * w, y + 0.1 * h}
+    # bird front side
+    point_three = {x + w, y + 0.2 * h}
+    # bird bottom
+    point_four = {x + 0.5 * w, y + 0.6 * h}
 
     Polygons.Polygon.make([point_one, point_two, point_three, point_four])
   end
@@ -275,9 +274,9 @@ defmodule FlappyWeb.FlappyLive do
     h = height / game_height * 100
 
     tl = {x, y}
-    bl = {x, y+h}
-    br = {x+w, y+h}
-    tr = {x+w, y}
+    bl = {x, y + h}
+    br = {x + w, y + h}
+    tr = {x + w, y}
 
     Polygons.Polygon.make([bl, tl, tr, br])
   end
