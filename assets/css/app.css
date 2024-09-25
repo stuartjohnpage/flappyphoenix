@@ -7,3 +7,18 @@
 html, body {
   overflow: hidden;
 }
+
+body {
+  min-height: 100vh;
+  background: url('/images/cityscape.webp') repeat-x;
+  animation: scrollBackground 60s linear infinite;
+}
+
+@keyframes scrollBackground {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
