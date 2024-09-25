@@ -43,7 +43,7 @@ defmodule FlappyWeb.FlappyLive do
       <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
         <p class="text-white text-4xl">Score: <%= @score %></p>
       </div>
-      <div  id="game-area" class="game-area w-screen h-screen">
+      <div id="game-area" class="game-area w-screen h-screen">
         <div
           id="bird-container"
           phx-window-keydown="player_move"
@@ -115,8 +115,6 @@ defmodule FlappyWeb.FlappyLive do
             sprite: sprite
         }
       end)
-
-    IO.inspect(updated_enemies, label: :here)
 
     {:noreply,
      socket
@@ -237,12 +235,20 @@ defmodule FlappyWeb.FlappyLive do
 
   defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height, player_size) do
     {player_length, player_height} = player_size
-    player_hitbox = generate_hitbox(bird_x, bird_y, player_length, player_height, game_width, game_height)
+
+    player_hitbox =
+      bird_x
+      |> generate_hitbox(bird_y, player_length, player_height, game_width, game_height)
+      |> centre_hitbox()
 
     Enum.any?(enemies, fn enemy ->
       {enemy_x, enemy_y} = enemy.position
       {width, height} = enemy.sprite.size
-      enemy_hitbox = generate_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
+
+      enemy_hitbox =
+        enemy_x
+        |> generate_hitbox(enemy_y, width, height, game_width, game_height)
+        |> centre_hitbox()
 
       Flappy.Hitbox.overlap?(player_hitbox, enemy_hitbox)
     end)
@@ -250,5 +256,15 @@ defmodule FlappyWeb.FlappyLive do
 
   defp generate_hitbox(x, y, width, height, game_width, game_height) do
     {x, y, width / game_width * 100, height / game_height * 100}
+  end
+
+  defp centre_hitbox({x, y, w, h}) do
+    scaling_factor = 0.77
+    scaled_width = w * scaling_factor
+    scaled_height = h * scaling_factor
+    quarter_width = scaled_width * (1 - scaling_factor)
+    quarter_height = scaled_height * (1 - scaling_factor)
+
+    {x + quarter_width, y + quarter_height, scaled_width - quarter_width, scaled_height - quarter_height}
   end
 end
