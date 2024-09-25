@@ -43,7 +43,7 @@ defmodule Polygons.Detection do
     if Enum.any?(axes_to_test, &(!collision_on_axis?(&1, poly1, poly2))) do
       false
     else
-      {:collision, "todo_provide_vector"}
+      true
     end
   end
 
@@ -58,7 +58,7 @@ defmodule Polygons.Detection do
       |> overlap?()
 
     if collision do
-      {:collision, "todo_provide_vector"}
+      true
     else
       false
     end
