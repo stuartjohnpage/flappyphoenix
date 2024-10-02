@@ -14,12 +14,12 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @player_size {128, 124}
+  @player_size {128, 89}
 
   @sprites [
-    # %{image: "/images/test_red.svg", size: {200, 200}},
+    %{image: "/images/test_red.svg", size: {100, 100}}
     # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
-    %{image: "/images/angular.svg", size: {100, 100}}
+    # %{image: "/images/angular.svg", size: {100, 100}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
@@ -175,8 +175,11 @@ defmodule Flappy.FlappyEngine do
 
   defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
     # The game gets harder as the score increases
-    difficultly_rating = if score < 495, do: score, else: 496
-    difficultly_cap = 500 - difficultly_rating
+
+    difficulty_score = 50
+
+    difficultly_rating = if score < difficulty_score - 5, do: score, else: difficulty_score - 4
+    difficultly_cap = difficulty_score - difficultly_rating
 
     if Enum.random(1..difficultly_cap) == 4 do
       # Generate a new enemy
@@ -225,17 +228,3 @@ defmodule Flappy.FlappyEngine do
     GenServer.call(__MODULE__, :go_left)
   end
 end
-
-### Thoughts I had last night
-
-# * we should randomly generate which enemies are going to appear on the screen,
-# as well as their heights and velocities.
-
-# * we should have a way to make the game harder as the player progresses,
-# this could be done by increasing the velocity of the enemies,
-# or by increasing the difficulty of the obstacles.
-
-# we should take the enemies and their speeds and heights, and
-# take randomly from pools of them.
-
-# Enemies can consist of the logos of different frameworks which compete with phoenix.

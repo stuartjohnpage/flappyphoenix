@@ -28,7 +28,7 @@ defmodule FlappyWeb.FlappyLive do
           <p class="p-4 text-4xl text-white">Play</p>
         </.button>
       </div>
-      <div :if={@game_over} class="flex flex-col items-center justify-center h-screen">
+      <div :if={@game_over} class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
         <%!-- start Gavin's idea --%>
         <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
@@ -41,7 +41,7 @@ defmodule FlappyWeb.FlappyLive do
         </.button>
       </div>
       <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
-        <p class="text-white text-4xl">Score: <%= @score %></p>
+        <p class="text-white text-4xl z-50">Score: <%= @score %></p>
       </div>
       <div id="game-area" class="game-area w-screen h-screen">
         <div
@@ -49,7 +49,7 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_move"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={~p"/images/phoenix_flipped.svg"} />
+          <img src={~p"/images/flipped_phoenix.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
@@ -220,7 +220,14 @@ defmodule FlappyWeb.FlappyLive do
 
     if game_over or collision? do
       FlappyEngine.stop_engine()
-      {:noreply, socket |> assign(:game_over, true) |> assign(:score, score)}
+
+      {:noreply,
+       socket
+       |> assign(:bird_y_position_percentage, bird_y_position_percentage)
+       |> assign(:bird_x_position_percentage, bird_x_position_percentage)
+       |> assign(:enemies, updated_enemies)
+       |> assign(:game_over, true)
+       |> assign(:score, score)}
     else
       Process.send_after(self(), :tick, @poll_rate)
 
@@ -246,8 +253,7 @@ defmodule FlappyWeb.FlappyLive do
       enemy_hitbox =
         generate_enemy_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
 
-      player_hitbox
-      |> Polygons.Detection.collision?(enemy_hitbox)
+      Polygons.Detection.collision?(player_hitbox, enemy_hitbox)
     end)
   end
 
@@ -255,18 +261,30 @@ defmodule FlappyWeb.FlappyLive do
     w = width / game_width * 100
     h = height / game_height * 100
 
-    {x, y, w, h} = centre_hitbox({x, y, w, h})
+    # {x, y, w, h} = centre_hitbox({x, y, w, h})
 
     # bird back
     point_one = {x, y + 0.6 * h}
-    # bird front top
-    point_two = {x + 0.9 * w, y + 0.1 * h}
-    # bird front side
-    point_three = {x + w, y + 0.2 * h}
-    # bird bottom
-    point_four = {x + 0.5 * w, y + 0.6 * h}
 
-    Polygons.Polygon.make([point_one, point_two, point_three, point_four])
+    point_two = {x + 0.2 * w, y + 0.3 * h}
+    # bird front top
+    point_three = {x + 0.8 * w, y}
+    # bird front side
+    point_four = {x + w, y + 0.1 * h}
+    # bird bottom
+    point_five = {x + 0.8 * w, y + 0.6 * h}
+
+    point_six = {x + 0.5 * w, y + h}
+
+    Polygons.Polygon.make([point_one, point_two, point_three, point_four, point_five, point_six])
+
+    # ## basic rectangle:
+    # tl = {x, y}
+    # bl = {x, y + h}
+    # br = {x + w, y + h}
+    # tr = {x + w, y}
+
+    # Polygons.Polygon.make([bl, tl, tr, br])
   end
 
   defp generate_enemy_hitbox(x, y, width, height, game_width, game_height) do
@@ -281,15 +299,15 @@ defmodule FlappyWeb.FlappyLive do
     Polygons.Polygon.make([bl, tl, tr, br])
   end
 
-  defp centre_hitbox({x, y, w, h}) do
-    scaling_factor = 0.9
-    scaled_width = w * scaling_factor
-    scaled_height = h * scaling_factor
-    quarter_width = scaled_width * (1 - scaling_factor)
-    quarter_height = scaled_height * (1 - scaling_factor)
+  # defp centre_hitbox({x, y, w, h}) do
+  #   scaling_factor = 0.9
+  #   scaled_width = w * scaling_factor
+  #   scaled_height = h * scaling_factor
+  #   quarter_width = scaled_width * (1 - scaling_factor)
+  #   quarter_height = scaled_height * (1 - scaling_factor)
 
-    {x + quarter_width, y + quarter_height, scaled_width - quarter_width, scaled_height - quarter_height}
-  end
+  #   {x + quarter_width, y + quarter_height, scaled_width - quarter_width, scaled_height - quarter_height}
+  # end
 end
 
 ### fix the enemy hixboxes using more vertices
