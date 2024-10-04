@@ -249,9 +249,10 @@ defmodule FlappyWeb.FlappyLive do
     Enum.any?(enemies, fn enemy ->
       {enemy_x, enemy_y} = enemy.position
       {width, height} = enemy.sprite.size
+      name = enemy.sprite.name
 
       enemy_hitbox =
-        angular_hitbox(enemy_x, enemy_y, width, height, game_width, game_height)
+        enemy_hitbox(enemy_x, enemy_y, width, height, game_width, game_height, name)
 
       Polygons.Detection.collision?(player_hitbox, enemy_hitbox)
     end)
@@ -261,49 +262,23 @@ defmodule FlappyWeb.FlappyLive do
     w = width / game_width * 100
     h = height / game_height * 100
 
-    # {x, y, w, h} = centre_hitbox({x, y, w, h})
-
-    # bird back
     point_one = {x, y + 0.6 * h}
-
     point_two = {x + 0.2 * w, y + 0.3 * h}
-    # bird front top
     point_three = {x + 0.8 * w, y}
-    # bird front side
     point_four = {x + w, y + 0.1 * h}
-    # bird bottom
     point_five = {x + 0.8 * w, y + 0.6 * h}
-
-    point_six = {x + 0.5 * w, y + h}
+    point_six = {x + 0.3 * w, y + h}
 
     Polygons.Polygon.make([point_one, point_two, point_three, point_four, point_five, point_six])
-
-    # ## basic rectangle:
-    # tl = {x, y}
-    # bl = {x, y + h}
-    # br = {x + w, y + h}
-    # tr = {x + w, y}
-
-    # Polygons.Polygon.make([bl, tl, tr, br])
   end
 
-  # defp generate_enemy_hitbox(x, y, width, height, game_width, game_height) do
-  #   w = width / game_width * 100
-  #   h = height / game_height * 100
+  defp enemy_hitbox(x, y, width, height, game_width, game_height, :angular) do
+    IO.inspect("here")
 
-  #   tl = {x, y}
-  #   bl = {x, y + h}
-  #   br = {x + w, y + h}
-  #   tr = {x + w, y}
-
-  #   Polygons.Polygon.make([bl, tl, tr, br])
-  # end
-
-  defp angular_hitbox(x, y, width, height, game_width, game_height) do
     w = width / game_width * 100
     h = height / game_height * 100
 
-    left_top = {x, y + 0.2 * h}
+    left_top = {x + w * 0.1, y + 0.2 * h}
     top = {x + 0.5 * w, y}
     right_top = {x + w, y + 0.2 * h}
     right_bottom = {x + w * 0.9, y + h * 0.8}
@@ -311,6 +286,18 @@ defmodule FlappyWeb.FlappyLive do
     left_bottom = {x + w * 0.1, y + h * 0.8}
 
     Polygons.Polygon.make([left_top, top, right_top, right_bottom, bottom, left_bottom])
+  end
+
+  defp enemy_hitbox(x, y, width, height, game_width, game_height, _) do
+    w = width / game_width * 100
+    h = height / game_height * 100
+
+    tl = {x, y}
+    bl = {x, y + h}
+    br = {x + w, y + h}
+    tr = {x + w, y}
+
+    Polygons.Polygon.make([bl, tl, tr, br])
   end
 
   # defp centre_hitbox({x, y, w, h}) do
@@ -323,5 +310,3 @@ defmodule FlappyWeb.FlappyLive do
   #   {x + quarter_width, y + quarter_height, scaled_width - quarter_width, scaled_height - quarter_height}
   # end
 end
-
-### fix the enemy hixboxes using more vertices
