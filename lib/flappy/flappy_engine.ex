@@ -17,9 +17,9 @@ defmodule Flappy.FlappyEngine do
   @player_size {128, 89}
 
   @sprites [
-    %{image: "/images/test_red.svg", size: {100, 100}}
+    # %{image: "/images/test_red.svg", size: {100, 100}}
     # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
-    # %{image: "/images/angular.svg", size: {100, 100}}
+    %{image: "/images/angular.svg", size: {100, 100}}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
