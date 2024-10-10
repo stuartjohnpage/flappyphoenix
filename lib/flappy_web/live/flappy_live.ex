@@ -219,6 +219,11 @@ defmodule FlappyWeb.FlappyLive do
         player_size
       )
 
+    enemies_hit_by_beam =
+      if game_state.laser_beam,
+        do: get_hit_enemies(updated_enemies, player_percentage_x, player_percentage_y, game_state),
+        else: []
+
     if game_state.game_over or collision? do
       FlappyEngine.stop_engine()
 
@@ -240,6 +245,35 @@ defmodule FlappyWeb.FlappyLive do
        |> assign(:bird_y_position_percentage, player_percentage_y)
        |> assign(:enemies, updated_enemies)}
     end
+  end
+
+  defp get_hit_enemies(enemies, player_percentage_x, player_percentage_y, game_state) do
+    laser_hitbox = generate_laser_hitbox(player_percentage_x, player_percentage_y, game_state)
+
+    Enum.filter(enemies, fn enemy ->
+      {enemy_x, enemy_y} = enemy.position
+      {width, height} = enemy.sprite.size
+      name = enemy.sprite.name
+
+      enemy_hitbox =
+        enemy_hitbox(enemy_x, enemy_y, width, height, game_state.game_width, game_state.game_height, name)
+
+      Polygons.Detection.collision?(laser_hitbox, enemy_hitbox)
+    end)
+  end
+
+  defp generate_laser_hitbox(player_x, player_y, game_state) do
+    x = bird_x_eye_position(player_x, game_state)
+    y = bird_y_eye_position(player_y, game_state)
+    w = 100
+    h = 1
+
+    Polygons.Polygon.make([
+      {x, y},
+      {x + w, y},
+      {x + w, y + h},
+      {w, y + h}
+    ])
   end
 
   # Note: at this point, we are working with percentage positions here
