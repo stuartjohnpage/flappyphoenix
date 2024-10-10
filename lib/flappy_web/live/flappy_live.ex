@@ -55,25 +55,35 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={~p"/images/flipped_phoenix.svg"} />
+          <img src={~p"/images/laser_phoenix.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
         <div
-          :if={@game_state.laser_beam}
+          :if={@game_state.laser_beam && !@game_state.game_over}
           id="laser-beam"
-          class="absolute bg-red-500 h-1"
+          class="absolute bg-red-900 h-1 rounded-md"
           style={"left: #{bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
         >
         </div>
 
-        <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @enemies do %>
+        <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @game_state.enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
             style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%"}
           >
             <img src={enemy.sprite.image} />
+          </div>
+        <% end %>
+
+        <%= for %{position: {_, _, x_pos, y_pos}} = power_up <- @game_state.power_ups do %>
+          <div
+            id={"power-up-container-#{power_up.id}"}
+            class="absolute"
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%"}
+          >
+            <img src={power_up.sprite.image} />
           </div>
         <% end %>
       </div>
@@ -88,7 +98,6 @@ defmodule FlappyWeb.FlappyLive do
 
     {:ok,
      socket
-     |> assign(:enemies, [])
      |> assign(:bird_x_position_percentage, 0)
      |> assign(:bird_y_position_percentage, 50)
      |> assign(:game_height, game_height)
@@ -103,7 +112,6 @@ defmodule FlappyWeb.FlappyLive do
 
     %{
       player_position: player_position,
-      enemies: enemies
     } = game_state = FlappyEngine.get_game_state()
 
     # Subscribe to updates
@@ -114,7 +122,6 @@ defmodule FlappyWeb.FlappyLive do
      socket
      |> assign(:bird_x_position_percentage, player_percentage_x)
      |> assign(:bird_y_position_percentage, player_percentage_y)
-     |> assign(:enemies, enemies)
      |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
   end
@@ -180,7 +187,6 @@ defmodule FlappyWeb.FlappyLive do
   def handle_info(:tick, socket) do
     %{
       player_position: player_position,
-      enemies: enemies
     } = game_state = FlappyEngine.get_game_state()
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
@@ -192,7 +198,6 @@ defmodule FlappyWeb.FlappyLive do
        socket
        |> assign(:bird_x_position_percentage, player_percentage_x)
        |> assign(:bird_y_position_percentage, player_percentage_y)
-       |> assign(:enemies, enemies)
        |> assign(:game_state, %{game_state | game_over: true})}
     else
       Process.send_after(self(), :tick, @poll_rate)
@@ -201,8 +206,7 @@ defmodule FlappyWeb.FlappyLive do
        socket
        |> assign(:game_state, game_state)
        |> assign(:bird_x_position_percentage, player_percentage_x)
-       |> assign(:bird_y_position_percentage, player_percentage_y)
-       |> assign(:enemies, enemies)}
+       |> assign(:bird_y_position_percentage, player_percentage_y)}
     end
   end
 
