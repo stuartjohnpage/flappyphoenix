@@ -12,6 +12,7 @@ body {
   min-height: 100vh;
   background: url('/images/cityscape.webp') repeat;
   animation: scrollBackground 60s linear infinite;
+  z-index: 40;
 }
 
 @keyframes scrollBackground {
