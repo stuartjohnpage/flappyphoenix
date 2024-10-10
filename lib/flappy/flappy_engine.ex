@@ -5,7 +5,7 @@ defmodule Flappy.FlappyEngine do
   alias Flappy.Enemy
 
   # TIME VARIABLES
-  @game_tick_interval 30
+  @game_tick_interval 15
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
@@ -19,7 +19,7 @@ defmodule Flappy.FlappyEngine do
   @sprites [
     # %{image: "/images/test_red.svg", size: {100, 100}}
     # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
-    %{image: "/images/angular.svg", size: {100, 100}, name: :angular}
+    %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
@@ -38,7 +38,8 @@ defmodule Flappy.FlappyEngine do
             score: 0,
             gravity: 0,
             enemies: [],
-            player_size: 0
+            player_size: 0,
+            laser_beam: false
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -89,6 +90,10 @@ defmodule Flappy.FlappyEngine do
   def handle_call(:go_left, _from, %{velocity: {x_velocity, y_velocity}} = state) do
     new_velocity = x_velocity + @thrust
     {:reply, state, %{state | velocity: {new_velocity, y_velocity}}}
+  end
+
+  def handle_call(:fire_laser, _from, state) do
+    {:reply, :ok, %{state | laser_beam: true}}
   end
 
   def handle_call(:get_state, _from, state) do
@@ -150,7 +155,12 @@ defmodule Flappy.FlappyEngine do
     new_y_position = y_position + new_y_velocity * (@game_tick_interval / 1000)
     new_x_position = x_position + x_velocity * (@game_tick_interval / 1000)
 
-    %{state | player_position: {new_x_position, new_y_position}, velocity: {x_velocity, new_y_velocity}}
+    %{
+      state
+      | player_position: {new_x_position, new_y_position},
+        velocity: {x_velocity, new_y_velocity},
+        laser_beam: false
+    }
   end
 
   defp update_enemies(state) do
@@ -175,9 +185,7 @@ defmodule Flappy.FlappyEngine do
 
   defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
     # The game gets harder as the score increases
-
-    difficulty_score = 50
-
+    difficulty_score = 500
     difficultly_rating = if score < difficulty_score - 5, do: score, else: difficulty_score - 4
     difficultly_cap = difficulty_score - difficultly_rating
 
@@ -226,5 +234,14 @@ defmodule Flappy.FlappyEngine do
 
   def go_left do
     GenServer.call(__MODULE__, :go_left)
+  end
+
+  def fire_laser do
+    GenServer.call(__MODULE__, :fire_laser)
+  end
+
+  def get_laser_beam_state do
+    state = get_game_state()
+    state.laser_beam
   end
 end
