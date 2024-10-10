@@ -30,7 +30,7 @@ defmodule Flappy.FlappyEngine do
   ]
 
   # Game state
-  defstruct player_position: {0, 0},
+  defstruct player_position: {0, 0, 0, 0}, # raw, raw, percent, percent
             velocity: {0, 0},
             game_over: false,
             game_height: 0,
@@ -48,7 +48,7 @@ defmodule Flappy.FlappyEngine do
     max_generation_height = round(game_height - game_height / 4)
 
     state = %__MODULE__{
-      player_position: {0, game_height / 2},
+      player_position: {0, game_height / 2, 0, game_height / 2},
       player_size: @player_size,
       velocity: @init_velocity,
       game_over: false,
@@ -58,7 +58,7 @@ defmodule Flappy.FlappyEngine do
       gravity: gravity,
       enemies: [
         %Enemy{
-          position: {game_width, Enum.random(0..max_generation_height)},
+          position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
           velocity: {Enum.random(-100..-50), 0},
           sprite: Enum.random(@sprites),
           id: UUID.uuid4()
@@ -108,17 +108,17 @@ defmodule Flappy.FlappyEngine do
       |> update_player()
       |> update_enemies()
 
-    {x_pos, y_pos} = state.player_position
+    {x_pos, y_pos, _x_percent, _y_percent} = state.player_position
 
     cond do
       y_pos < 0 ->
-        state = %{state | player_position: {x_pos, 0}, velocity: {0, 0}, game_over: true}
+        state = %{state | player_position: {x_pos, 0, 0, 0}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
       y_pos > state.game_height - elem(@player_size, 1) ->
         state = %{
           state
-          | player_position: {x_pos, state.game_height - elem(@player_size, 1)},
+          | player_position: {x_pos, state.game_height - elem(@player_size, 1), 0, 0},
             velocity: {0, 0},
             game_over: true
         }
@@ -126,13 +126,13 @@ defmodule Flappy.FlappyEngine do
         {:noreply, state}
 
       x_pos < 0 ->
-        state = %{state | player_position: {0, y_pos}, velocity: {0, 0}, game_over: true}
+        state = %{state | player_position: {0, y_pos, 0, 0}, velocity: {0, 0}, game_over: true}
         {:noreply, state}
 
       x_pos > state.game_width - elem(@player_size, 0) ->
         state = %{
           state
-          | player_position: {state.game_width - elem(@player_size, 0), y_pos},
+          | player_position: {state.game_width - elem(@player_size, 0), y_pos, 0, 0},
             velocity: {0, 0},
             game_over: true
         }
@@ -151,9 +151,11 @@ defmodule Flappy.FlappyEngine do
 
   defp update_player(
          %{
-           player_position: {x_position, y_position},
+           player_position: {x_position, y_position, _x_percent, _y_percent},
            velocity: {x_velocity, y_velocity},
            gravity: gravity,
+           game_width: game_width,
+           game_height: game_height,
            laser_duration: laser_duration
          } = state
        ) do
@@ -163,9 +165,11 @@ defmodule Flappy.FlappyEngine do
     laser_on? = laser_duration > 0
     laser_duration = if laser_on?, do: laser_duration - 1, else: 0
 
+    {x_percent, y_percent} = get_percentage_position({new_x_position, new_y_position}, game_width, game_height)
+
     %{
       state
-      | player_position: {new_x_position, new_y_position},
+      | player_position: {new_x_position, new_y_position, x_percent, y_percent},
         velocity: {x_velocity, new_y_velocity},
         laser_beam: laser_on?,
         laser_duration: laser_duration
@@ -177,15 +181,17 @@ defmodule Flappy.FlappyEngine do
       state
       |> maybe_generate_enemy()
       |> Enum.map(fn enemy ->
-        {x, y} = enemy.position
+        {x, y, _xpercent, _ypercent} = enemy.position
         {vx, vy} = enemy.velocity
         new_x = x + vx * (@game_tick_interval / 1000)
         new_y = y + vy * (@game_tick_interval / 1000)
 
-        %{enemy | position: {new_x, new_y}}
+        {x_percent, y_percent} = get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
+
+        %{enemy | position: {new_x, new_y, x_percent, y_percent}}
       end)
       |> Enum.reject(fn enemy ->
-        {x, _y} = enemy.position
+        {x, _y, _, _} = enemy.position
         x < 0 - state.game_width / 100 * 25
       end)
 
@@ -204,7 +210,7 @@ defmodule Flappy.FlappyEngine do
 
       [
         %Enemy{
-          position: {game_width, Enum.random(0..max_generation_height)},
+          position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
           velocity: {Enum.random(-100..-50), 0},
           sprite: Enum.random(@sprites),
           id: UUID.uuid4()
@@ -214,6 +220,13 @@ defmodule Flappy.FlappyEngine do
     else
       enemies
     end
+  end
+
+  defp get_percentage_position({x_position, y_position}, game_width, game_height) do
+    percentage_x = x_position / game_width * 100
+    percentage_y = y_position / game_height * 100
+
+    {percentage_x, percentage_y}
   end
 
   # Public API
