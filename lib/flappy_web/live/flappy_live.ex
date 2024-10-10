@@ -29,20 +29,21 @@ defmodule FlappyWeb.FlappyLive do
         </.button>
       </div>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
-        <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+        <p :if={@game_state.score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
         <%!-- start Gavin's idea --%>
-        <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
+        <p :if={@game_state.score == 69} class="text-white text-4xl">Nice!</p>
         <%!-- end Gavin's idea --%>
 
         <br />
-        <p class="text-white text-4xl">Your final score was <%= @score %></p>
+        <p class="text-white text-4xl">Your final score was <%= @game_state.score %></p>
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
       </div>
       <div id="score-container" class=" z-50 absolute top-0 left-0 ml-11 mt-11">
-        <p class="text-white text-4xl">Score: <%= @score %></p>
+        <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
+      <%= inspect(@game_state.laser_beam) %>
       <div id="game-area" class="game-area w-screen h-screen z-40">
         <div
           id="bird-container"
@@ -52,11 +53,12 @@ defmodule FlappyWeb.FlappyLive do
           <img src={~p"/images/flipped_phoenix.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
+
         <div
-          :if={@laser_beam}
+          :if={@game_state.laser_beam}
           id="laser-beam"
-          class="absolute bg-red-500 h-2"
-          style={"left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; width: #{100 - @bird_x_position_percentage}%;"}
+          class="absolute bg-red-500 h-1"
+          style={"left: #{bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
         >
         </div>
 
@@ -87,8 +89,6 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
-     |> assign(:laser_beam, false)
-     |> assign(:score, 0)
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
   end
@@ -99,7 +99,6 @@ defmodule FlappyWeb.FlappyLive do
     %{
       player_position: player_position,
       game_height: game_height,
-      score: score,
       enemies: enemies
     } = game_state = FlappyEngine.get_game_state()
 
@@ -125,7 +124,6 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:bird_x_position_percentage, player_percentage_x)
      |> assign(:bird_y_position_percentage, player_percentage_y)
      |> assign(:enemies, updated_enemies)
-     |> assign(:score, score)
      |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
   end
@@ -137,8 +135,6 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.stop_engine()
     FlappyEngine.start_engine(game_height, game_width)
-
-    IO.inspect(FlappyEngine.get_game_state())
 
     %{player_position: player_position, velocity: _velocity, game_height: game_height} =
       game_state =
@@ -182,7 +178,8 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_event("player_action", %{"key" => " "}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser()
-    {:noreply, assign(socket, :laser_beam, true)}
+
+    {:noreply, socket}
   end
 
   def handle_event("player_action", _, socket) do
@@ -195,7 +192,6 @@ defmodule FlappyWeb.FlappyLive do
       game_height: game_height,
       game_width: game_width,
       enemies: enemies,
-      score: score,
       player_size: player_size
     } = game_state = FlappyEngine.get_game_state()
 
@@ -232,19 +228,18 @@ defmodule FlappyWeb.FlappyLive do
        |> assign(:bird_x_position_percentage, player_percentage_x)
        |> assign(:bird_y_position_percentage, player_percentage_y)
        |> assign(:enemies, updated_enemies)
-       |> assign(:game_state, %{game_state | game_over: true})
-       |> assign(:score, score)}
+       |> assign(:game_state, %{game_state | game_over: true})}
     else
       Process.send_after(self(), :tick, @poll_rate)
-      laser_beam = FlappyEngine.get_laser_beam_state()
+
+      IO.inspect(game_state.laser_duration)
 
       {:noreply,
        socket
+       |> assign(:game_state, game_state)
        |> assign(:bird_x_position_percentage, player_percentage_x)
        |> assign(:bird_y_position_percentage, player_percentage_y)
-       |> assign(:laser_beam, laser_beam)
-       |> assign(:enemies, updated_enemies)
-       |> assign(:score, score)}
+       |> assign(:enemies, updated_enemies)}
     end
   end
 
@@ -312,5 +307,15 @@ defmodule FlappyWeb.FlappyLive do
     percentage_y = y_position / game_height * 100
 
     {percentage_x, percentage_y}
+  end
+
+  defp bird_x_eye_position(x_pos, %{player_size: {w, _h}, game_width: game_width}) do
+    w = w / game_width * 100
+    x_pos + w * 0.81
+  end
+
+  defp bird_y_eye_position(y_pos, %{player_size: {_w, h}, game_height: game_height}) do
+    h = h / game_height * 100
+    y_pos + h * 0.05
   end
 end

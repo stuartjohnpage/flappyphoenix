@@ -5,7 +5,7 @@ defmodule Flappy.FlappyEngine do
   alias Flappy.Enemy
 
   # TIME VARIABLES
-  @game_tick_interval 15
+  @game_tick_interval 30
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
@@ -38,8 +38,9 @@ defmodule Flappy.FlappyEngine do
             score: 0,
             gravity: 0,
             enemies: [],
-            player_size: 0,
-            laser_beam: false
+            player_size: {0, 0},
+            laser_beam: false,
+            laser_duration: 0
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -93,7 +94,7 @@ defmodule Flappy.FlappyEngine do
   end
 
   def handle_call(:fire_laser, _from, state) do
-    {:reply, :ok, %{state | laser_beam: true}}
+    {:reply, :ok, %{state | laser_beam: true, laser_duration: 3}}
   end
 
   def handle_call(:get_state, _from, state) do
@@ -149,17 +150,25 @@ defmodule Flappy.FlappyEngine do
   end
 
   defp update_player(
-         %{player_position: {x_position, y_position}, velocity: {x_velocity, y_velocity}, gravity: gravity} = state
+         %{
+           player_position: {x_position, y_position},
+           velocity: {x_velocity, y_velocity},
+           gravity: gravity,
+           laser_duration: laser_duration
+         } = state
        ) do
     new_y_velocity = y_velocity + gravity * (@game_tick_interval / 1000)
     new_y_position = y_position + new_y_velocity * (@game_tick_interval / 1000)
     new_x_position = x_position + x_velocity * (@game_tick_interval / 1000)
+    laser_on? = laser_duration > 0
+    laser_duration = if laser_on?, do: laser_duration - 1, else: 0
 
     %{
       state
       | player_position: {new_x_position, new_y_position},
         velocity: {x_velocity, new_y_velocity},
-        laser_beam: false
+        laser_beam: laser_on?,
+        laser_duration: laser_duration
     }
   end
 
