@@ -43,7 +43,6 @@ defmodule FlappyWeb.FlappyLive do
       <div id="score-container" class=" z-50 absolute top-0 left-0 ml-11 mt-11">
         <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
-      <%= inspect(@game_state.laser_beam) %>
       <div id="game-area" class="game-area w-screen h-screen z-40">
         <div
           id="bird-container"
