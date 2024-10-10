@@ -4,13 +4,13 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
-  @poll_rate 15
+  @poll_rate 30
 
   def render(assigns) do
     ~H"""
     <div>
       <div
-        :if={!@game_over && !@game_started}
+        :if={!@game_state.game_over && !@game_started}
         class="flex flex-col items-center justify-center h-screen"
       >
         <p class="text-white text-4xl">Get ready to play Flappy Phoenix!</p>
@@ -28,29 +28,37 @@ defmodule FlappyWeb.FlappyLive do
           <p class="p-4 text-4xl text-white">Play</p>
         </.button>
       </div>
-      <div :if={@game_over} class="flex flex-col items-center justify-center h-screen z-50">
-        <p :if={@score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
+      <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
+        <p :if={@game_state.score != 69} class="text-white text-4xl">YOU LOSE! I SAY GOOD DAY SIR!</p>
         <%!-- start Gavin's idea --%>
-        <p :if={@score == 69} class="text-white text-4xl">Nice!</p>
+        <p :if={@game_state.score == 69} class="text-white text-4xl">Nice!</p>
         <%!-- end Gavin's idea --%>
 
         <br />
-        <p class="text-white text-4xl">Your final score was <%= @score %></p>
+        <p class="text-white text-4xl">Your final score was <%= @game_state.score %></p>
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
       </div>
-      <div id="score-container" class="absolute top-0 left-0 ml-11 mt-11">
-        <p class="text-white text-4xl z-50">Score: <%= @score %></p>
+      <div id="score-container" class=" z-50 absolute top-0 left-0 ml-11 mt-11">
+        <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
-      <div id="game-area" class="game-area w-screen h-screen">
+      <div id="game-area" class="game-area w-screen h-screen z-40">
         <div
           id="bird-container"
-          phx-window-keydown="player_move"
+          phx-window-keydown="player_action"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
           <img src={~p"/images/flipped_phoenix.svg"} />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
+        </div>
+
+        <div
+          :if={@game_state.laser_beam}
+          id="laser-beam"
+          class="absolute bg-red-500 h-1"
+          style={"left: #{bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
+        >
         </div>
 
         <%= for %{position: {x_pos, y_pos}} = enemy <- @enemies do %>
@@ -77,36 +85,30 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:enemies, [])
      |> assign(:bird_x_position_percentage, 0)
      |> assign(:bird_y_position_percentage, game_height / 2)
-     |> assign(:game_over, false)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
-     |> assign(:score, 0)
+     |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
   end
 
   def handle_event("start_game", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
+    GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      player_position: {x_position, y_position},
-      game_over: game_over,
+      player_position: player_position,
       game_height: game_height,
-      score: score,
       enemies: enemies
-    } =
-      FlappyEngine.get_game_state()
+    } = game_state = FlappyEngine.get_game_state()
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
-    bird_x_position_percentage = x_position / game_width * 100
-    bird_y_position_percentage = y_position / game_height * 100
+    {player_percentage_x, player_percentage_y} = get_percentage_position(player_position, game_width, game_height)
 
     updated_enemies =
-      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
-        {x_pos, y_pos} = position
-        enemy_x_position_percentage = x_pos / game_width * 100
-        enemy_y_position_percentage = y_pos / game_height * 100
+      Enum.map(enemies, fn %{position: enemy_position, velocity: velocity, sprite: sprite} = enemy ->
+        {enemy_x_position_percentage, enemy_y_position_percentage} =
+          get_percentage_position(enemy_position, game_width, game_height)
 
         %{
           enemy
@@ -118,12 +120,10 @@ defmodule FlappyWeb.FlappyLive do
 
     {:noreply,
      socket
-     |> assign(:bird_x_position_percentage, bird_x_position_percentage)
-     |> assign(:bird_y_position_percentage, bird_y_position_percentage)
-     |> assign(:flappy_engine, flappy_engine_pid)
+     |> assign(:bird_x_position_percentage, player_percentage_x)
+     |> assign(:bird_y_position_percentage, player_percentage_y)
      |> assign(:enemies, updated_enemies)
-     |> assign(:score, score)
-     |> assign(:game_over, game_over)
+     |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
   end
 
@@ -132,73 +132,74 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    flappy_engine_pid = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.stop_engine()
+    FlappyEngine.start_engine(game_height, game_width)
 
-    %{player_position: {x_position, y_position}, velocity: _velocity, game_over: game_over, game_height: game_height} =
+    %{player_position: player_position, velocity: _velocity, game_height: game_height} =
+      game_state =
       FlappyEngine.get_game_state()
 
-    bird_y_position_percentage = y_position / game_height * 100
-    bird_x_position_percentage = x_position / game_width * 100
+    {player_percentage_x, player_percentage_y} = get_percentage_position(player_position, game_width, game_height)
 
     # Subscribe to updates
     if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
     {:noreply,
      socket
-     |> assign(:bird_y_position_percentage, bird_y_position_percentage)
-     |> assign(:bird_x_position_percentage, bird_x_position_percentage)
-     |> assign(:flappy_engine, flappy_engine_pid)
-     |> assign(:game_over, game_over)}
+     |> assign(:game_state, game_state)
+     |> assign(:bird_x_position_percentage, player_percentage_x)
+     |> assign(:bird_y_position_percentage, player_percentage_y)}
   end
 
-  def handle_event("player_move", %{"key" => "ArrowUp"}, socket) do
+  def handle_event("player_action", %{"key" => "ArrowUp"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_up()
 
     {:noreply, socket}
   end
 
-  def handle_event("player_move", %{"key" => "ArrowDown"}, socket) do
+  def handle_event("player_action", %{"key" => "ArrowDown"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_down()
 
     {:noreply, socket}
   end
 
-  def handle_event("player_move", %{"key" => "ArrowRight"}, socket) do
+  def handle_event("player_action", %{"key" => "ArrowRight"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_right()
 
     {:noreply, socket}
   end
 
-  def handle_event("player_move", %{"key" => "ArrowLeft"}, socket) do
+  def handle_event("player_action", %{"key" => "ArrowLeft"}, socket) do
     if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_left()
 
     {:noreply, socket}
   end
 
-  def handle_event("player_move", _, socket) do
+  def handle_event("player_action", %{"key" => " "}, socket) do
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("player_action", _, socket) do
     {:noreply, socket}
   end
 
   def handle_info(:tick, socket) do
     %{
-      player_position: {x_position, y_position},
-      game_over: game_over,
+      player_position: player_position,
       game_height: game_height,
       game_width: game_width,
       enemies: enemies,
-      score: score,
       player_size: player_size
-    } =
-      FlappyEngine.get_game_state()
+    } = game_state = FlappyEngine.get_game_state()
 
-    bird_x_position_percentage = x_position / game_width * 100
-    bird_y_position_percentage = y_position / game_height * 100
+    {player_percentage_x, player_percentage_y} = get_percentage_position(player_position, game_width, game_height)
 
     updated_enemies =
-      Enum.map(enemies, fn %{position: position, velocity: velocity, sprite: sprite} = enemy ->
-        {x_pos, y_pos} = position
-        enemy_x_position_percentage = x_pos / game_width * 100
-        enemy_y_position_percentage = y_pos / game_height * 100
+      Enum.map(enemies, fn %{position: enemy_position, velocity: velocity, sprite: sprite} = enemy ->
+        {enemy_x_position_percentage, enemy_y_position_percentage} =
+          get_percentage_position(enemy_position, game_width, game_height)
 
         %{
           enemy
@@ -211,35 +212,71 @@ defmodule FlappyWeb.FlappyLive do
     collision? =
       check_for_collisions(
         updated_enemies,
-        bird_x_position_percentage,
-        bird_y_position_percentage,
+        player_percentage_x,
+        player_percentage_y,
         game_width,
         game_height,
         player_size
       )
 
-    if game_over or collision? do
+    enemies_hit_by_beam =
+      if game_state.laser_beam,
+        do: get_hit_enemies(updated_enemies, player_percentage_x, player_percentage_y, game_state),
+        else: []
+
+    if game_state.game_over or collision? do
       FlappyEngine.stop_engine()
 
       {:noreply,
        socket
-       |> assign(:bird_y_position_percentage, bird_y_position_percentage)
-       |> assign(:bird_x_position_percentage, bird_x_position_percentage)
+       |> assign(:bird_x_position_percentage, player_percentage_x)
+       |> assign(:bird_y_position_percentage, player_percentage_y)
        |> assign(:enemies, updated_enemies)
-       |> assign(:game_over, true)
-       |> assign(:score, score)}
+       |> assign(:game_state, %{game_state | game_over: true})}
     else
       Process.send_after(self(), :tick, @poll_rate)
 
+      IO.inspect(game_state.laser_duration)
+
       {:noreply,
        socket
-       |> assign(:bird_y_position_percentage, bird_y_position_percentage)
-       |> assign(:bird_x_position_percentage, bird_x_position_percentage)
-       |> assign(:enemies, updated_enemies)
-       |> assign(:score, score)}
+       |> assign(:game_state, game_state)
+       |> assign(:bird_x_position_percentage, player_percentage_x)
+       |> assign(:bird_y_position_percentage, player_percentage_y)
+       |> assign(:enemies, updated_enemies)}
     end
   end
 
+  defp get_hit_enemies(enemies, player_percentage_x, player_percentage_y, game_state) do
+    laser_hitbox = generate_laser_hitbox(player_percentage_x, player_percentage_y, game_state)
+
+    Enum.filter(enemies, fn enemy ->
+      {enemy_x, enemy_y} = enemy.position
+      {width, height} = enemy.sprite.size
+      name = enemy.sprite.name
+
+      enemy_hitbox =
+        enemy_hitbox(enemy_x, enemy_y, width, height, game_state.game_width, game_state.game_height, name)
+
+      Polygons.Detection.collision?(laser_hitbox, enemy_hitbox)
+    end)
+  end
+
+  defp generate_laser_hitbox(player_x, player_y, game_state) do
+    x = bird_x_eye_position(player_x, game_state)
+    y = bird_y_eye_position(player_y, game_state)
+    w = 100
+    h = 1
+
+    Polygons.Polygon.make([
+      {x, y},
+      {x + w, y},
+      {x + w, y + h},
+      {w, y + h}
+    ])
+  end
+
+  # Note: at this point, we are working with percentage positions here
   defp check_for_collisions(enemies, bird_x, bird_y, game_width, game_height, player_size) do
     {player_length, player_height} = player_size
 
@@ -273,8 +310,6 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   defp enemy_hitbox(x, y, width, height, game_width, game_height, :angular) do
-    IO.inspect("here")
-
     w = width / game_width * 100
     h = height / game_height * 100
 
@@ -300,13 +335,20 @@ defmodule FlappyWeb.FlappyLive do
     Polygons.Polygon.make([bl, tl, tr, br])
   end
 
-  # defp centre_hitbox({x, y, w, h}) do
-  #   scaling_factor = 0.9
-  #   scaled_width = w * scaling_factor
-  #   scaled_height = h * scaling_factor
-  #   quarter_width = scaled_width * (1 - scaling_factor)
-  #   quarter_height = scaled_height * (1 - scaling_factor)
+  defp get_percentage_position({x_position, y_position}, game_width, game_height) do
+    percentage_x = x_position / game_width * 100
+    percentage_y = y_position / game_height * 100
 
-  #   {x + quarter_width, y + quarter_height, scaled_width - quarter_width, scaled_height - quarter_height}
-  # end
+    {percentage_x, percentage_y}
+  end
+
+  defp bird_x_eye_position(x_pos, %{player_size: {w, _h}, game_width: game_width}) do
+    w = w / game_width * 100
+    x_pos + w * 0.81
+  end
+
+  defp bird_y_eye_position(y_pos, %{player_size: {_w, h}, game_height: game_height}) do
+    h = h / game_height * 100
+    y_pos + h * 0.05
+  end
 end
