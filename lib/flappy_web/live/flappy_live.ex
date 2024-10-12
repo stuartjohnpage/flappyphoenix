@@ -4,7 +4,7 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
-  @poll_rate 30
+  @topic "flappy:game_state"
 
   def render(assigns) do
     ~H"""
@@ -104,6 +104,10 @@ defmodule FlappyWeb.FlappyLive do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Flappy.PubSub, @topic)
+    end
+
     {:ok,
      socket
      |> assign(:bird_x_position_percentage, 0)
@@ -122,8 +126,6 @@ defmodule FlappyWeb.FlappyLive do
       player_position: player_position
     } = game_state = FlappyEngine.get_game_state()
 
-    # Subscribe to updates
-    if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
     {_, _, player_percentage_x, player_percentage_y} = player_position
 
     {:noreply,
@@ -147,9 +149,6 @@ defmodule FlappyWeb.FlappyLive do
       FlappyEngine.get_game_state()
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
-
-    # Subscribe to updates
-    if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
     {:noreply,
      socket
@@ -192,10 +191,10 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
-  def handle_info(:tick, socket) do
+  def handle_info({:game_state_update, game_state}, socket) do
     %{
       player_position: player_position
-    } = game_state = FlappyEngine.get_game_state()
+    } = game_state
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
 
@@ -208,8 +207,6 @@ defmodule FlappyWeb.FlappyLive do
        |> assign(:bird_y_position_percentage, player_percentage_y)
        |> assign(:game_state, %{game_state | game_over: true})}
     else
-      Process.send_after(self(), :tick, @poll_rate)
-
       {:noreply,
        socket
        |> assign(:game_state, game_state)
