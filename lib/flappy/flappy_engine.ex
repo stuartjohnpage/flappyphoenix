@@ -3,6 +3,7 @@ defmodule Flappy.FlappyEngine do
   use GenServer
 
   alias Flappy.Enemy
+  alias Flappy.PowerUp
 
   # TIME VARIABLES
   @game_tick_interval 30
@@ -19,7 +20,11 @@ defmodule Flappy.FlappyEngine do
 
   @player_size {128, 89}
 
-  @sprites [
+  @power_up_sprites [
+    %{image: "/images/laser-warning.svg", size: {100, 100}, name: :laser}
+  ]
+
+  @enemy_sprites [
     # %{image: "/images/test_red.svg", size: {100, 100}}
     # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
     %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular}
@@ -43,8 +48,11 @@ defmodule Flappy.FlappyEngine do
             gravity: 0,
             enemies: [],
             player_size: {0, 0},
+            laser_allowed: false,
             laser_beam: false,
-            laser_duration: 0
+            laser_duration: 0,
+            power_ups: [],
+            granted_powers: []
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -64,7 +72,15 @@ defmodule Flappy.FlappyEngine do
         %Enemy{
           position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
           velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@sprites),
+          sprite: Enum.random(@enemy_sprites),
+          id: UUID.uuid4()
+        }
+      ],
+      power_ups: [
+        %PowerUp{
+          position: {game_width / 2, 0, 50, 0},
+          velocity: {0, Enum.random(50..100)},
+          sprite: Enum.random(@power_up_sprites),
           id: UUID.uuid4()
         }
       ]
@@ -111,6 +127,7 @@ defmodule Flappy.FlappyEngine do
       state
       |> update_player()
       |> update_enemies()
+      |> update_power_ups()
 
     {x_pos, y_pos, x_percent, y_percent} = state.player_position
 
@@ -129,7 +146,12 @@ defmodule Flappy.FlappyEngine do
         do: get_hit_enemies(state.enemies, x_percent, y_percent, state),
         else: []
 
-    state = remove_hit_enemies(state, enemies_hit_by_beam)
+    power_ups_hit = get_hit_power_ups(state.power_ups, x_percent, y_percent, state)
+
+    state =
+      state
+      |> remove_hit_enemies(enemies_hit_by_beam)
+      |> grant_power_ups(power_ups_hit)
 
     cond do
       collision? ->
@@ -169,7 +191,16 @@ defmodule Flappy.FlappyEngine do
   end
 
   def handle_info(:score_tick, state) do
-    state = %{state | score: state.score + 1}
+    granted_powers =
+      state.granted_powers
+      |> Enum.map(fn
+        {_power, 0} -> nil
+        {power, duration_left} -> {power, duration_left - 1}
+      end)
+      |> Enum.reject(&is_nil(&1))
+
+    state = %{state | score: state.score + 1, granted_powers: granted_powers}
+
     {:noreply, state}
   end
 
@@ -200,6 +231,28 @@ defmodule Flappy.FlappyEngine do
     }
   end
 
+  defp update_power_ups(state) do
+    power_ups =
+      state
+      |> maybe_generate_power_up()
+      |> Enum.map(fn power_up ->
+        {x, y, _xpercent, _ypercent} = power_up.position
+        {vx, vy} = power_up.velocity
+        new_x = x + vx * (@game_tick_interval / 1000)
+        new_y = y + vy * (@game_tick_interval / 1000)
+
+        {x_percent, y_percent} = get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
+
+        %{power_up | position: {new_x, new_y, x_percent, y_percent}}
+      end)
+      |> Enum.reject(fn power_up ->
+        {x, _y, _, _} = power_up.position
+        x < 0 - state.game_width / 100 * 25
+      end)
+
+    %{state | power_ups: power_ups}
+  end
+
   defp update_enemies(state) do
     enemies =
       state
@@ -222,6 +275,23 @@ defmodule Flappy.FlappyEngine do
     %{state | enemies: enemies}
   end
 
+  defp maybe_generate_power_up(%{power_ups: power_ups, game_width: game_width}) do
+    if Enum.random(1..1000) == 4 do
+      # Generate a new power_up
+      [
+        %PowerUp{
+          position: {game_width / 2, 0, 50, 0},
+          velocity: {0, Enum.random(50..100)},
+          sprite: Enum.random(@power_up_sprites),
+          id: UUID.uuid4()
+        }
+        | power_ups
+      ]
+    else
+      power_ups
+    end
+  end
+
   defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
     # The game gets harder as the score increases
     difficultly_rating = if score < @difficulty_score - 5, do: score, else: @difficulty_score - 4
@@ -235,7 +305,7 @@ defmodule Flappy.FlappyEngine do
         %Enemy{
           position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
           velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@sprites),
+          sprite: Enum.random(@enemy_sprites),
           id: UUID.uuid4()
         }
         | enemies
@@ -264,6 +334,26 @@ defmodule Flappy.FlappyEngine do
         enemy_hitbox(enemy_x, enemy_y, width, height, game_state.game_width, game_state.game_height, name)
 
       Polygons.Detection.collision?(laser_hitbox, enemy_hitbox)
+    end)
+  end
+
+  def get_hit_power_ups(power_ups, player_x, player_y, %{
+        game_width: game_width,
+        game_height: game_height,
+        player_size: player_size
+      }) do
+    {player_length, player_height} = player_size
+
+    player_hitbox = generate_player_hitbox(player_x, player_y, player_length, player_height, game_width, game_height)
+
+    Enum.filter(power_ups, fn power_up ->
+      {_, _, power_up_x, power_up_y} = power_up.position
+      {width, height} = power_up.sprite.size
+      name = power_up.sprite.name
+
+      power_up_hitbox = enemy_hitbox(power_up_x, power_up_y, width, height, game_width, game_height, name)
+
+      Polygons.Detection.collision?(player_hitbox, power_up_hitbox)
     end)
   end
 
@@ -355,6 +445,27 @@ defmodule Flappy.FlappyEngine do
     enemies = Enum.reject(state.enemies, fn enemy -> enemy.id in hit_ids end)
 
     %{state | enemies: enemies}
+  end
+
+  defp grant_power_ups(state, power_ups_hit) do
+    hit_ids = Enum.map(power_ups_hit, & &1.id)
+
+    {power_ups, granted_powers} =
+      Enum.reduce(state.power_ups, {[], state.granted_powers}, fn power_up, {power_ups, granted_powers} ->
+        if power_up.id in hit_ids do
+          {power_ups, [{power_up.sprite.name, 5} | granted_powers]}
+        else
+          {[power_up | power_ups], granted_powers}
+        end
+      end)
+
+    laser_allowed =
+      Enum.any?(granted_powers, fn
+        {:laser, duration} when duration > 0 -> true
+        _ -> false
+      end)
+
+    %{state | power_ups: power_ups, granted_powers: granted_powers, laser_allowed: laser_allowed}
   end
 
   # Public API
