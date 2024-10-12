@@ -16,7 +16,7 @@ defmodule Flappy.FlappyEngine do
   @start_score 0
 
   ### DIFFICULTY MULTIPLER
-  @difficulty_score 5
+  @difficulty_score 100
 
   @player_size {128, 89}
 
@@ -444,7 +444,9 @@ defmodule Flappy.FlappyEngine do
     hit_ids = Enum.map(enemies_hit, & &1.id)
     enemies = Enum.reject(state.enemies, fn enemy -> enemy.id in hit_ids end)
 
-    %{state | enemies: enemies}
+    updated_score = state.score + Enum.count(enemies_hit) * 10
+
+    %{state | enemies: enemies, score: updated_score}
   end
 
   defp grant_power_ups(state, power_ups_hit) do
