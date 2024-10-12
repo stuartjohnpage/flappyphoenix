@@ -4,7 +4,7 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
-  @poll_rate 30
+  @topic "flappy:game_state"
 
   def render(assigns) do
     ~H"""
@@ -37,11 +37,11 @@ defmodule FlappyWeb.FlappyLive do
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
         <%!-- start Gavin's idea --%>
-        <p :if={@game_state.score == 69} class="text-white text-4xl">Nice!</p>
+        <p :if={@game_state.score == 69} class="text-white text-4xl z-50">Nice!</p>
         <%!-- end Gavin's idea --%>
 
         <br />
-        <p class="text-white text-4xl">Your final score was <%= @game_state.score %></p>
+        <p class="text-white text-4xl z-50">Your final score was <%= @game_state.score %></p>
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
@@ -59,11 +59,16 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={
-            if @game_state.laser_allowed,
-              do: ~p"/images/laser_phoenix.svg",
-              else: ~p"/images/flipped_phoenix.svg"
-          } />
+          <img
+            src={
+              if @game_state.laser_allowed,
+                do: ~p"/images/laser_phoenix.svg",
+                else: ~p"/images/flipped_phoenix.svg"
+            }
+            class={
+              if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+            }
+          />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
@@ -104,6 +109,10 @@ defmodule FlappyWeb.FlappyLive do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
 
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Flappy.PubSub, @topic)
+    end
+
     {:ok,
      socket
      |> assign(:bird_x_position_percentage, 0)
@@ -122,8 +131,6 @@ defmodule FlappyWeb.FlappyLive do
       player_position: player_position
     } = game_state = FlappyEngine.get_game_state()
 
-    # Subscribe to updates
-    if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
     {_, _, player_percentage_x, player_percentage_y} = player_position
 
     {:noreply,
@@ -147,9 +154,6 @@ defmodule FlappyWeb.FlappyLive do
       FlappyEngine.get_game_state()
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
-
-    # Subscribe to updates
-    if connected?(socket), do: Process.send_after(self(), :tick, @poll_rate)
 
     {:noreply,
      socket
@@ -183,7 +187,7 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("player_action", %{"key" => " "}, socket) do
-    if GenServer.whereis(FlappyEngine) && socket.assigns.game_state.laser_allowed, do: FlappyEngine.fire_laser()
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser()
 
     {:noreply, socket}
   end
@@ -192,10 +196,10 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
-  def handle_info(:tick, socket) do
+  def handle_info({:game_state_update, game_state}, socket) do
     %{
       player_position: player_position
-    } = game_state = FlappyEngine.get_game_state()
+    } = game_state
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
 
@@ -208,8 +212,6 @@ defmodule FlappyWeb.FlappyLive do
        |> assign(:bird_y_position_percentage, player_percentage_y)
        |> assign(:game_state, %{game_state | game_over: true})}
     else
-      Process.send_after(self(), :tick, @poll_rate)
-
       {:noreply,
        socket
        |> assign(:game_state, game_state)
