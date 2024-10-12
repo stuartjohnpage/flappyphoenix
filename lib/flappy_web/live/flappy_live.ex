@@ -37,11 +37,11 @@ defmodule FlappyWeb.FlappyLive do
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
         <%!-- start Gavin's idea --%>
-        <p :if={@game_state.score == 69} class="text-white text-4xl">Nice!</p>
+        <p :if={@game_state.score == 69} class="text-white text-4xl z-50">Nice!</p>
         <%!-- end Gavin's idea --%>
 
         <br />
-        <p class="text-white text-4xl">Your final score was <%= @game_state.score %></p>
+        <p class="text-white text-4xl z-50">Your final score was <%= @game_state.score %></p>
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
@@ -183,7 +183,7 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("player_action", %{"key" => " "}, socket) do
-    if GenServer.whereis(FlappyEngine) && socket.assigns.game_state.laser_allowed, do: FlappyEngine.fire_laser()
+    if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser()
 
     {:noreply, socket}
   end

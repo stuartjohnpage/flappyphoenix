@@ -114,7 +114,11 @@ defmodule Flappy.FlappyEngine do
   end
 
   def handle_call(:fire_laser, _from, state) do
-    {:reply, :ok, %{state | laser_beam: true, laser_duration: 3}}
+    if state.laser_allowed do
+      {:reply, :ok, %{state | laser_beam: true, laser_duration: 3}}
+    else
+      {:reply, :ok, state}
+    end
   end
 
   def handle_call(:get_state, _from, state) do
@@ -325,35 +329,27 @@ defmodule Flappy.FlappyEngine do
   defp get_hit_enemies(enemies, player_percentage_x, player_percentage_y, game_state) do
     laser_hitbox = generate_laser_hitbox(player_percentage_x, player_percentage_y, game_state)
 
-    Enum.filter(enemies, fn enemy ->
-      {_, _, enemy_x, enemy_y} = enemy.position
-      {width, height} = enemy.sprite.size
-      name = enemy.sprite.name
-
-      enemy_hitbox =
-        enemy_hitbox(enemy_x, enemy_y, width, height, game_state.game_width, game_state.game_height, name)
-
-      Polygons.Detection.collision?(laser_hitbox, enemy_hitbox)
-    end)
+    detect_multiple_hits(enemies, laser_hitbox, game_state)
   end
 
-  def get_hit_power_ups(power_ups, player_x, player_y, %{
-        game_width: game_width,
-        game_height: game_height,
-        player_size: player_size
-      }) do
+  def get_hit_power_ups(power_ups, player_x, player_y, %{player_size: player_size} = state) do
     {player_length, player_height} = player_size
 
-    player_hitbox = generate_player_hitbox(player_x, player_y, player_length, player_height, game_width, game_height)
+    player_hitbox =
+      generate_player_hitbox(player_x, player_y, player_length, player_height, state.game_width, state.game_height)
 
-    Enum.filter(power_ups, fn power_up ->
-      {_, _, power_up_x, power_up_y} = power_up.position
-      {width, height} = power_up.sprite.size
-      name = power_up.sprite.name
+    detect_multiple_hits(power_ups, player_hitbox, state)
+  end
 
-      power_up_hitbox = enemy_hitbox(power_up_x, power_up_y, width, height, game_width, game_height, name)
+  defp detect_multiple_hits(multiple_entities, single_hitbox, game_state) do
+    Enum.filter(multiple_entities, fn entity ->
+      {_, _, entity_x, entity_y} = entity.position
+      {width, height} = entity.sprite.size
+      name = entity.sprite.name
 
-      Polygons.Detection.collision?(player_hitbox, power_up_hitbox)
+      entity_hitbox = enemy_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
+
+      Polygons.Detection.collision?(single_hitbox, entity_hitbox)
     end)
   end
 
@@ -501,10 +497,5 @@ defmodule Flappy.FlappyEngine do
 
   def fire_laser do
     GenServer.call(__MODULE__, :fire_laser)
-  end
-
-  def get_laser_beam_state do
-    state = get_game_state()
-    state.laser_beam
   end
 end
