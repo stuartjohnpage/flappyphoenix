@@ -2,8 +2,8 @@ defmodule Flappy.FlappyEngine do
   @moduledoc false
   use GenServer
 
-  alias Flappy.PowerUp
   alias Flappy.Enemy
+  alias Flappy.PowerUp
 
   # TIME VARIABLES
   @game_tick_interval 30
@@ -51,7 +51,8 @@ defmodule Flappy.FlappyEngine do
             laser_allowed: false,
             laser_beam: false,
             laser_duration: 0,
-            power_ups: []
+            power_ups: [],
+            granted_powers: []
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width}) do
@@ -146,7 +147,6 @@ defmodule Flappy.FlappyEngine do
         else: []
 
     power_ups_hit = get_hit_power_ups(state.power_ups, x_percent, y_percent, state)
-    IO.inspect(power_ups_hit, label: :hithithit)
 
     state =
       state
@@ -186,13 +186,21 @@ defmodule Flappy.FlappyEngine do
         {:noreply, state}
 
       true ->
-        IO.inspect(state)
         {:noreply, state}
     end
   end
 
   def handle_info(:score_tick, state) do
-    state = %{state | score: state.score + 1}
+    granted_powers =
+      state.granted_powers
+      |> Enum.map(fn
+        {_power, 0} -> nil
+        {power, duration_left} -> {power, duration_left - 1}
+      end)
+      |> Enum.reject(&is_nil(&1))
+
+    state = %{state | score: state.score + 1, granted_powers: granted_powers}
+
     {:noreply, state}
   end
 
@@ -329,7 +337,11 @@ defmodule Flappy.FlappyEngine do
     end)
   end
 
-  def get_hit_power_ups(power_ups, player_x, player_y, %{game_width: game_width, game_height: game_height, player_size: player_size}) do
+  def get_hit_power_ups(power_ups, player_x, player_y, %{
+        game_width: game_width,
+        game_height: game_height,
+        player_size: player_size
+      }) do
     {player_length, player_height} = player_size
 
     player_hitbox = generate_player_hitbox(player_x, player_y, player_length, player_height, game_width, game_height)
@@ -437,9 +449,23 @@ defmodule Flappy.FlappyEngine do
 
   defp grant_power_ups(state, power_ups_hit) do
     hit_ids = Enum.map(power_ups_hit, & &1.id)
-    power_ups = Enum.reject(state.power_ups, fn power_up -> power_up.id in hit_ids end)
 
-    %{state | power_ups: power_ups}
+    {power_ups, granted_powers} =
+      Enum.reduce(state.power_ups, {[], state.granted_powers}, fn power_up, {power_ups, granted_powers} ->
+        if power_up.id in hit_ids do
+          {power_ups, [{power_up.sprite.name, 5} | granted_powers]}
+        else
+          {[power_up | power_ups], granted_powers}
+        end
+      end)
+
+    laser_allowed =
+      Enum.any?(granted_powers, fn
+        {:laser, duration} when duration > 0 -> true
+        _ -> false
+      end)
+
+    %{state | power_ups: power_ups, granted_powers: granted_powers, laser_allowed: laser_allowed}
   end
 
   # Public API

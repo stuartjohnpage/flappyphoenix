@@ -23,6 +23,10 @@ defmodule FlappyWeb.FlappyLive do
           Use the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
         </p>
         <br />
+        <p class="text-white text-2xl">
+          Press the space bar to activate your power-ups!
+        </p>
+        <br />
         <p class="text-white text-2xl">👀 Good luck!</p>
         <.button phx-click="start_game" class="bg-blue-500 rounded mt-10">
           <p class="p-4 text-4xl text-white">Play</p>
@@ -55,7 +59,11 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={~p"/images/laser_phoenix.svg"} />
+          <img src={
+            if @game_state.laser_allowed,
+              do: ~p"/images/laser_phoenix.svg",
+              else: ~p"/images/flipped_phoenix.svg"
+          } />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
@@ -111,7 +119,7 @@ defmodule FlappyWeb.FlappyLive do
     GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      player_position: player_position,
+      player_position: player_position
     } = game_state = FlappyEngine.get_game_state()
 
     # Subscribe to updates
@@ -175,7 +183,7 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("player_action", %{"key" => " "}, socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser()
+    if GenServer.whereis(FlappyEngine) && socket.assigns.game_state.laser_allowed, do: FlappyEngine.fire_laser()
 
     {:noreply, socket}
   end
@@ -186,7 +194,7 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info(:tick, socket) do
     %{
-      player_position: player_position,
+      player_position: player_position
     } = game_state = FlappyEngine.get_game_state()
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
