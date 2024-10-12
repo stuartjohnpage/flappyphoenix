@@ -59,11 +59,16 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
         >
-          <img src={
-            if @game_state.laser_allowed,
-              do: ~p"/images/laser_phoenix.svg",
-              else: ~p"/images/flipped_phoenix.svg"
-          } />
+          <img
+            src={
+              if @game_state.laser_allowed,
+                do: ~p"/images/laser_phoenix.svg",
+                else: ~p"/images/flipped_phoenix.svg"
+            }
+            class={
+              if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+            }
+          />
           <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
