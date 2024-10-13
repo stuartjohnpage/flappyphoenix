@@ -311,12 +311,14 @@ defmodule Flappy.FlappyEngine do
 
   ### GENERATION FUNCTIONS
 
-  defp maybe_generate_power_up(%{power_ups: power_ups, game_width: game_width}) do
+  defp maybe_generate_power_up(%{power_ups: power_ups, game_width: game_width, player_size: {length, _height}}) do
     if Enum.random(1..1000) == 4 do
       # Generate a new power_up
+      max_generation_width = round(game_width - length)
+
       [
         %PowerUp{
-          position: {game_width / 2, 0, 50, 0},
+          position: {Enum.random(0..max_generation_width), 0, 0, 0},
           velocity: {0, Enum.random(100..150)},
           sprite: Enum.random(@power_up_sprites),
           id: UUID.uuid4()
@@ -356,31 +358,31 @@ defmodule Flappy.FlappyEngine do
     GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width}, name: __MODULE__)
   end
 
-  def stop_engine do
-    GenServer.stop(__MODULE__)
+  def stop_engine(pid) do
+    GenServer.stop(pid)
   end
 
-  def get_game_state do
-    GenServer.call(__MODULE__, :get_state)
+  def get_game_state(pid) do
+    GenServer.call(pid, :get_state)
   end
 
-  def go_up do
-    GenServer.call(__MODULE__, :go_up)
+  def go_up(pid) do
+    GenServer.call(pid, :go_up)
   end
 
-  def go_down do
-    GenServer.call(__MODULE__, :go_down)
+  def go_down(pid) do
+    GenServer.call(pid, :go_down)
   end
 
-  def go_right do
-    GenServer.call(__MODULE__, :go_right)
+  def go_right(pid) do
+    GenServer.call(pid, :go_right)
   end
 
-  def go_left do
-    GenServer.call(__MODULE__, :go_left)
+  def go_left(pid) do
+    GenServer.call(pid, :go_left)
   end
 
-  def fire_laser do
-    GenServer.call(__MODULE__, :fire_laser)
+  def fire_laser(pid) do
+    GenServer.call(pid, :fire_laser)
   end
 end
