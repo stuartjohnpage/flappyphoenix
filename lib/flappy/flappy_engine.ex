@@ -45,6 +45,7 @@ defmodule Flappy.FlappyEngine do
 
   # raw, raw, percent, percent
   defstruct player_position: {0, 0, 0, 0},
+            game_id: nil,
             velocity: {0, 0},
             game_over: false,
             game_height: 0,
@@ -60,7 +61,7 @@ defmodule Flappy.FlappyEngine do
             granted_powers: []
 
   @impl true
-  def init(%{game_height: game_height, game_width: game_width}) do
+  def init(%{game_height: game_height, game_width: game_width, game_id: game_id}) do
     gravity = @gravity / game_height * 500
     max_generation_height = round(game_height - game_height / 4)
 
@@ -69,6 +70,7 @@ defmodule Flappy.FlappyEngine do
       player_size: @initial_player_size,
       velocity: @init_velocity,
       game_over: false,
+      game_id: game_id,
       game_height: game_height,
       game_width: game_width,
       score: @start_score,
@@ -131,7 +133,7 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:game_tick, %{player_size: {player_length, player_height}} = state) do
+  def handle_info(:game_tick, %{game_id: game_id, player_size: {player_length, player_height}} = state) do
     state =
       state
       |> update_player()
@@ -158,12 +160,12 @@ defmodule Flappy.FlappyEngine do
     cond do
       collision? ->
         state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       y_pos < 0 ->
         state = %{state | player_position: {x_pos, 0, 0, 0}, velocity: {0, 0}, game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       y_pos > state.game_height - player_height ->
@@ -174,12 +176,12 @@ defmodule Flappy.FlappyEngine do
             game_over: true
         }
 
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos < 0 ->
         state = %{state | player_position: {0, y_pos, 0, 0}, velocity: {0, 0}, game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos > state.game_width - player_length ->
@@ -190,11 +192,11 @@ defmodule Flappy.FlappyEngine do
             game_over: true
         }
 
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       true ->
-        Phoenix.PubSub.broadcast(Flappy.PubSub, @topic, {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
     end
   end
@@ -355,7 +357,8 @@ defmodule Flappy.FlappyEngine do
 
   ### PUBLIC API
   def start_engine(game_height, game_width) do
-    GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width}, name: __MODULE__)
+    game_id = UUID.uuid4()
+    GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width, game_id: game_id})
   end
 
   def stop_engine(pid) do

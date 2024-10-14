@@ -1,5 +1,7 @@
 defmodule FlappyWeb.FlappyLive do
-  @moduledoc false
+  @moduledoc """
+  Flappy Phoenix - a Phoenix LiveView game. The main live view module.
+  """
   use FlappyWeb, :live_view
 
   alias Flappy.FlappyEngine
@@ -104,15 +106,9 @@ defmodule FlappyWeb.FlappyLive do
     """
   end
 
-  @spec mount(any(), any(), Phoenix.LiveView.Socket.t()) :: {:ok, map()}
-  def mount(_params, _session, %{id: id} = socket) do
-    IO.inspect(id)
+  def mount(_params, _session, socket) do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
-
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Flappy.PubSub, @topic)
-    end
 
     {:ok,
      socket
@@ -126,13 +122,18 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("start_game", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    {:ok, engine_pid} = GenServer.whereis(FlappyEngine) || FlappyEngine.start_engine(game_height, game_width)
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      player_position: player_position
+      player_position: player_position,
+      game_id: game_id
     } = game_state = FlappyEngine.get_game_state(engine_pid)
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
+    end
 
     {:noreply,
      socket
@@ -147,19 +148,18 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_height: height)}
   end
 
-  def handle_event(
-        "play_again",
-        _,
-        %{assigns: %{game_height: game_height, game_width: game_width, engine_pid: engine_pid}} = socket
-      ) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.stop_engine(engine_pid)
+  def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
-    %{player_position: player_position} =
+    %{player_position: player_position, game_id: game_id} =
       game_state =
       FlappyEngine.get_game_state(engine_pid)
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
+    end
 
     {:noreply,
      socket
@@ -170,31 +170,31 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("player_action", %{"key" => "ArrowUp"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_up(engine_pid)
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_up(engine_pid)
 
     {:noreply, socket}
   end
 
   def handle_event("player_action", %{"key" => "ArrowDown"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_down(engine_pid)
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_down(engine_pid)
 
     {:noreply, socket}
   end
 
   def handle_event("player_action", %{"key" => "ArrowRight"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_right(engine_pid)
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_right(engine_pid)
 
     {:noreply, socket}
   end
 
   def handle_event("player_action", %{"key" => "ArrowLeft"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.go_left(engine_pid)
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_left(engine_pid)
 
     {:noreply, socket}
   end
 
   def handle_event("player_action", %{"key" => " "}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    if GenServer.whereis(FlappyEngine), do: FlappyEngine.fire_laser(engine_pid)
+    if GenServer.whereis(engine_pid), do: FlappyEngine.fire_laser(engine_pid)
 
     {:noreply, socket}
   end
@@ -225,6 +225,10 @@ defmodule FlappyWeb.FlappyLive do
        |> assign(:bird_x_position_percentage, player_percentage_x)
        |> assign(:bird_y_position_percentage, player_percentage_y)}
     end
+  end
+
+  def handle_info({:game_state_update, game_state}, socket) do
+    {:noreply, assign(socket, game_state: game_state)}
   end
 
   defp bird_x_eye_position(x_pos, %{player_size: {w, _h}, game_width: game_width}) do
