@@ -17,8 +17,6 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  @topic "flappy:game_state"
-
   ### DIFFICULTY MULTIPLIER
   @difficulty_score 100
 
