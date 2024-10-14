@@ -1,5 +1,7 @@
 # Flappy Phoenix
 
+When I wrote this, I had no idea https://github.com/moomerman/flappy-phoenix existed: a previous project which implements liveview to create a more faithful Flappy bird clone. I totally did *not* mean to tread on anyone's toes. For what it's worth, this is not a faithful clone: it's more like I took it as an inspiration. 
+
 Welcome to **Flappy Phoenix**, a game built using Phoenix LiveView. In this game, you control a little phoenix bird (the same one from the Phoenix Framework logo) and your goal is to avoid other framework logos while keeping the bird within the screen bounds. The game gets progressively harder as you play, so stay sharp!
 
 ## Table of Contents
