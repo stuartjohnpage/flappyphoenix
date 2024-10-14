@@ -29,14 +29,14 @@ defmodule Flappy.FlappyEngine do
   @enemy_sprites [
     # %{image: "/images/test_red.svg", size: {100, 100}}
     # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
-    %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular}
+    %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
+    %{image: "/images/node.svg", size: {100, 100}, name: :node}
     # %{image: "/images/django.svg", size: {200, 200}},
     # %{image: "/images/ember.svg", size: {205, 77}},
     # %{image: "/images/jquery.svg", size: {200, 200}},
     # %{image: "/images/laravel.svg", size: {200, 200}},
     # %{image: "/images/react.svg", size: {100, 100}},
     # %{image: "/images/vue.svg", size: {100, 100}},
-    # %{image: "/images/node.svg", size: {200, 200}}
   ]
 
   # Game state

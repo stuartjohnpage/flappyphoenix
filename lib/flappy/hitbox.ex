@@ -89,6 +89,20 @@ defmodule Flappy.Hitbox do
     Polygons.Polygon.make([left_top, top, right_top, right_bottom, bottom, left_bottom])
   end
 
+  defp entity_hitbox(x, y, width, height, game_width, game_height, :node) do
+    w = width / game_width * 100
+    h = height / game_height * 100
+
+    left_top = {x, y + 0.25 * h}
+    top = {x + 0.5 * w, y}
+    right_top = {x + w, y + 0.25 * h}
+    right_bottom = {x + w, y + h * 0.75}
+    bottom = {x + 0.5 * w, y + h}
+    left_bottom = {x, y + h * 0.75}
+
+    Polygons.Polygon.make([left_top, top, right_top, right_bottom, bottom, left_bottom])
+  end
+
   defp entity_hitbox(x, y, width, height, game_width, game_height, _) do
     w = width / game_width * 100
     h = height / game_height * 100
