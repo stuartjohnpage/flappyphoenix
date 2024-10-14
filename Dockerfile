@@ -54,6 +54,7 @@ COPY assets assets
 # compile assets
 RUN mix assets.deploy
 
+# gzip the assets
 RUN mix phx.digest
 
 # Compile the release
