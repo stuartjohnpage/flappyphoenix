@@ -6,8 +6,6 @@ defmodule FlappyWeb.FlappyLive do
 
   alias Flappy.FlappyEngine
 
-  @topic "flappy:game_state"
-
   def render(assigns) do
     ~H"""
     <div>
@@ -169,31 +167,51 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:bird_y_position_percentage, player_percentage_y)}
   end
 
-  def handle_event("player_action", %{"key" => "ArrowUp"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_event(
+        "player_action",
+        %{"key" => "ArrowUp"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.go_up(engine_pid)
 
     {:noreply, socket}
   end
 
-  def handle_event("player_action", %{"key" => "ArrowDown"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_event(
+        "player_action",
+        %{"key" => "ArrowDown"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.go_down(engine_pid)
 
     {:noreply, socket}
   end
 
-  def handle_event("player_action", %{"key" => "ArrowRight"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_event(
+        "player_action",
+        %{"key" => "ArrowRight"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.go_right(engine_pid)
 
     {:noreply, socket}
   end
 
-  def handle_event("player_action", %{"key" => "ArrowLeft"}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_event(
+        "player_action",
+        %{"key" => "ArrowLeft"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.go_left(engine_pid)
 
     {:noreply, socket}
   end
 
-  def handle_event("player_action", %{"key" => " "}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_event(
+        "player_action",
+        %{"key" => " "},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.fire_laser(engine_pid)
 
     {:noreply, socket}
