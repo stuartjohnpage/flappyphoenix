@@ -18,7 +18,7 @@ defmodule Flappy.FlappyEngine do
   @start_score 0
 
   ### DIFFICULTY MULTIPLIER
-  @difficulty_score 100
+  @difficulty_score 500
 
   @initial_player_size {128, 89}
 
@@ -28,7 +28,7 @@ defmodule Flappy.FlappyEngine do
 
   @enemy_sprites [
     # %{image: "/images/test_red.svg", size: {100, 100}}
-    # %{image: "/images/ruby_on_rails-cropped.svg", size: {141, 68.6}},
+    %{image: "/images/ruby_rails.svg", size: {397, 142}, name: :ruby_rails},
     %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
     %{image: "/images/node.svg", size: {100, 100}, name: :node}
     # %{image: "/images/django.svg", size: {200, 200}},
@@ -206,9 +206,11 @@ defmodule Flappy.FlappyEngine do
         {_power, 0} -> nil
         {power, duration_left} -> {power, duration_left - 1}
       end)
-      |> Enum.reject(&is_nil(&1))
+      |> Enum.reject(&is_nil/1)
 
     state = %{state | score: state.score + 1, granted_powers: granted_powers}
+    state = if rem(state.score, 2) == 0, do: %{state | enemies: generate_enemy(state)}, else: state
+    state = if rem(state.score, 10) == 0, do: %{state | power_ups: generate_power_up(state)}, else: state
 
     {:noreply, state}
   end
@@ -311,46 +313,54 @@ defmodule Flappy.FlappyEngine do
 
   ### GENERATION FUNCTIONS
 
-  defp maybe_generate_power_up(%{power_ups: power_ups, game_width: game_width, player_size: {length, _height}}) do
+  defp maybe_generate_power_up(%{power_ups: power_ups} = state) do
     if Enum.random(1..1000) == 4 do
       # Generate a new power_up
-      max_generation_width = round(game_width - length)
-
-      [
-        %PowerUp{
-          position: {Enum.random(0..max_generation_width), 0, 0, 0},
-          velocity: {0, Enum.random(100..150)},
-          sprite: Enum.random(@power_up_sprites),
-          id: UUID.uuid4()
-        }
-        | power_ups
-      ]
+      generate_power_up(state)
     else
       power_ups
     end
   end
 
-  defp maybe_generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, score: score}) do
+  defp generate_power_up(%{player_size: {length, _height}} = state) do
+    max_generation_width = round(state.game_width - length)
+
+    [
+      %PowerUp{
+        position: {Enum.random(0..max_generation_width), 0, 0, 0},
+        velocity: {0, Enum.random(100..150)},
+        sprite: Enum.random(@power_up_sprites),
+        id: UUID.uuid4()
+      }
+      | state.power_ups
+    ]
+  end
+
+  defp maybe_generate_enemy(%{enemies: enemies, score: score} = state) do
     # The game gets harder as the score increases
     difficultly_rating = if score < @difficulty_score - 5, do: score, else: @difficulty_score - 4
     difficultly_cap = @difficulty_score - difficultly_rating
 
     if Enum.random(1..difficultly_cap) == 4 do
       # Generate a new enemy
-      max_generation_height = round(game_height - game_height / 4)
-
-      [
-        %Enemy{
-          position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
-          velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(@enemy_sprites),
-          id: UUID.uuid4()
-        }
-        | enemies
-      ]
+      generate_enemy(state)
     else
       enemies
     end
+  end
+
+  defp generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width}) do
+    max_generation_height = round(game_height - game_height / 4)
+
+    [
+      %Enemy{
+        position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
+        velocity: {Enum.random(-100..-50), 0},
+        sprite: Enum.random(@enemy_sprites),
+        id: UUID.uuid4()
+      }
+      | enemies
+    ]
   end
 
   ### PUBLIC API
