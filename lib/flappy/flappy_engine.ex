@@ -23,7 +23,7 @@ defmodule Flappy.FlappyEngine do
   @initial_player_size {128, 89}
 
   @power_up_sprites [
-    %{image: "/images/laser-warning.svg", size: {100, 100}, name: :laser}
+    %{image: "/images/laser-warning.svg", size: {50, 50}, name: :laser}
   ]
 
   @enemy_sprites [

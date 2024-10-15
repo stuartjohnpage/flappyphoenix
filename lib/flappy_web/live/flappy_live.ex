@@ -84,7 +84,7 @@ defmodule FlappyWeb.FlappyLive do
           <div
             id={"enemy-container-#{enemy.id}"}
             class="absolute"
-            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%"}
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
           >
             <img src={enemy.sprite.image} />
           </div>
@@ -93,8 +93,8 @@ defmodule FlappyWeb.FlappyLive do
         <%= for %{position: {_, _, x_pos, y_pos}} = power_up <- @game_state.power_ups do %>
           <div
             id={"power-up-container-#{power_up.id}"}
-            class="absolute"
-            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%"}
+            class="absolute power-up-glow"
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
           >
             <img src={power_up.sprite.image} />
           </div>
