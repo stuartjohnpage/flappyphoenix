@@ -37,8 +37,6 @@ defmodule Flappy.FlappyEngine do
   ]
 
   # Game state
-
-  # raw, raw, percent, percent
   defstruct game_id: nil,
             game_over: false,
             game_height: 0,
