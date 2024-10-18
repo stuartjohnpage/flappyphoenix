@@ -4,6 +4,7 @@ defmodule Flappy.FlappyEngine do
 
   alias Flappy.Enemy
   alias Flappy.Hitbox
+  alias Flappy.Player
   alias Flappy.Position
   alias Flappy.PowerUp
 
@@ -12,7 +13,6 @@ defmodule Flappy.FlappyEngine do
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
-  @init_velocity {0, 0}
   @gravity 250
   @thrust -100
   @start_score 0
@@ -20,43 +20,36 @@ defmodule Flappy.FlappyEngine do
   ### DIFFICULTY MULTIPLIER
   @difficulty_score 500
 
-  @initial_player_size {128, 89}
-
   @power_up_sprites [
     %{image: "/images/laser-warning.svg", size: {50, 50}, name: :laser}
   ]
 
+  @player_sprites [
+    %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :phoenix},
+    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :laser_phoenix},
+    %{image: "/images/test_blue.svg", size: {128, 89}, name: :test}
+  ]
+
   @enemy_sprites [
-    # %{image: "/images/test_red.svg", size: {100, 100}}
     %{image: "/images/ruby_rails.svg", size: {397, 142}, name: :ruby_rails},
     %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
     %{image: "/images/node.svg", size: {100, 100}, name: :node}
-    # %{image: "/images/django.svg", size: {200, 200}},
-    # %{image: "/images/ember.svg", size: {205, 77}},
-    # %{image: "/images/jquery.svg", size: {200, 200}},
-    # %{image: "/images/laravel.svg", size: {200, 200}},
-    # %{image: "/images/react.svg", size: {100, 100}},
-    # %{image: "/images/vue.svg", size: {100, 100}},
   ]
 
   # Game state
-
-  # raw, raw, percent, percent
-  defstruct player_position: {0, 0, 0, 0},
-            game_id: nil,
-            velocity: {0, 0},
+  defstruct game_id: nil,
             game_over: false,
             game_height: 0,
             game_width: 0,
             score: 0,
             gravity: 0,
-            enemies: [],
-            player_size: {0, 0},
             laser_allowed: false,
             laser_beam: false,
             laser_duration: 0,
-            power_ups: [],
-            granted_powers: []
+            granted_powers: [],
+            enemies: [%Enemy{}],
+            power_ups: [%PowerUp{}],
+            player: %Player{}
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width, game_id: game_id}) do
@@ -64,15 +57,18 @@ defmodule Flappy.FlappyEngine do
     max_generation_height = round(game_height - game_height / 4)
 
     state = %__MODULE__{
-      player_position: {0, game_height / 2, 0, game_height / 2},
-      player_size: @initial_player_size,
-      velocity: @init_velocity,
       game_over: false,
       game_id: game_id,
       game_height: game_height,
       game_width: game_width,
       score: @start_score,
       gravity: gravity,
+      player: %Player{
+        position: {0, game_height / 2, 0, game_height / 2},
+        velocity: {0, 0},
+        sprite: List.first(@player_sprites),
+        id: UUID.uuid4()
+      },
       enemies: [
         %Enemy{
           position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
@@ -98,24 +94,34 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_call(:go_up, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+  def handle_call(:go_up, _from, %{player: player} = state) do
+    {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity + @thrust
-    {:reply, state, %{state | velocity: {x_velocity, new_velocity}}}
+    player = %{player | velocity: {x_velocity, new_velocity}}
+    {:reply, state, %{state | player: player}}
   end
 
-  def handle_call(:go_down, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+  def handle_call(:go_down, _from, %{player: player} = state) do
+    {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity - @thrust
-    {:reply, state, %{state | velocity: {x_velocity, new_velocity}}}
+    player = %{player | velocity: {x_velocity, new_velocity}}
+    {:reply, state, %{state | player: player}}
   end
 
-  def handle_call(:go_right, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+  def handle_call(:go_right, _from, %{player: player} = state) do
+    {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity - @thrust
-    {:reply, state, %{state | velocity: {new_velocity, y_velocity}}}
+
+    player = %{player | velocity: {new_velocity, y_velocity}}
+    {:reply, state, %{state | player: player}}
   end
 
-  def handle_call(:go_left, _from, %{velocity: {x_velocity, y_velocity}} = state) do
+  def handle_call(:go_left, _from, %{player: player} = state) do
+    {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity + @thrust
-    {:reply, state, %{state | velocity: {new_velocity, y_velocity}}}
+
+    player = %{player | velocity: {new_velocity, y_velocity}}
+    {:reply, state, %{state | player: player}}
   end
 
   def handle_call(:fire_laser, _from, state) do
@@ -131,14 +137,17 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(:game_tick, %{game_id: game_id, player_size: {player_length, player_height}} = state) do
+  def handle_info(
+        :game_tick,
+        %{game_id: game_id, player: %{sprite: %{size: {player_length, player_height}}} = player} = state
+      ) do
     state =
       state
       |> update_player()
       |> update_enemies()
       |> update_power_ups()
 
-    {x_pos, y_pos, _, _} = state.player_position
+    {x_pos, y_pos, _, _} = player.position
 
     collision? =
       Hitbox.check_for_enemy_collisions?(state)
@@ -162,34 +171,22 @@ defmodule Flappy.FlappyEngine do
         {:noreply, state}
 
       y_pos < 0 ->
-        state = %{state | player_position: {x_pos, 0, 0, 0}, velocity: {0, 0}, game_over: true}
+        state = %{state | game_over: true}
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       y_pos > state.game_height - player_height ->
-        state = %{
-          state
-          | player_position: {x_pos, state.game_height - player_height, 0, 0},
-            velocity: {0, 0},
-            game_over: true
-        }
-
+        state = %{state | game_over: true}
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos < 0 ->
-        state = %{state | player_position: {0, y_pos, 0, 0}, velocity: {0, 0}, game_over: true}
+        state = %{state | game_over: true}
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos > state.game_width - player_length ->
-        state = %{
-          state
-          | player_position: {state.game_width - player_length, y_pos, 0, 0},
-            velocity: {0, 0},
-            game_over: true
-        }
-
+        state = %{state | game_over: true}
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
@@ -221,14 +218,16 @@ defmodule Flappy.FlappyEngine do
 
   defp update_player(
          %{
-           player_position: {x_position, y_position, _x_percent, _y_percent},
-           velocity: {x_velocity, y_velocity},
+           player: player,
            gravity: gravity,
            game_width: game_width,
            game_height: game_height,
            laser_duration: laser_duration
          } = state
        ) do
+    {x_position, y_position, _x_percent, _y_percent} = player.position
+    {x_velocity, y_velocity} = player.velocity
+
     new_y_velocity = y_velocity + gravity * (@game_tick_interval / 1000)
     new_y_position = y_position + new_y_velocity * (@game_tick_interval / 1000)
     new_x_position = x_position + x_velocity * (@game_tick_interval / 1000)
@@ -237,10 +236,15 @@ defmodule Flappy.FlappyEngine do
 
     {x_percent, y_percent} = Position.get_percentage_position({new_x_position, new_y_position}, game_width, game_height)
 
+    player = %{
+      player
+      | position: {new_x_position, new_y_position, x_percent, y_percent},
+        velocity: {x_velocity, new_y_velocity}
+    }
+
     %{
       state
-      | player_position: {new_x_position, new_y_position, x_percent, y_percent},
-        velocity: {x_velocity, new_y_velocity},
+      | player: player,
         laser_beam: laser_on?,
         laser_duration: laser_duration
     }
@@ -322,8 +326,8 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  defp generate_power_up(%{player_size: {length, _height}} = state) do
-    max_generation_width = round(state.game_width - length)
+  defp generate_power_up(state) do
+    max_generation_width = round(state.game_width)
 
     [
       %PowerUp{
