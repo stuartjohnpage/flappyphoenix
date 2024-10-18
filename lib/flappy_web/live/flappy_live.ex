@@ -101,6 +101,50 @@ defmodule FlappyWeb.FlappyLive do
           </div>
         <% end %>
       </div>
+      <div
+        :if={@game_started && !@game_state.game_over && @is_mobile}
+        class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
+      >
+        <div class="grid grid-cols-3 gap-2">
+          <button
+            phx-click="player_action"
+            phx-value-key="ArrowLeft"
+            class="bg-blue-500 text-white p-2 rounded"
+          >
+            ⬅️
+          </button>
+          <div class="grid grid-rows-2 gap-2">
+            <button
+              phx-click="player_action"
+              phx-value-key="ArrowUp"
+              class="bg-blue-500 text-white p-2 rounded"
+            >
+              ⬆️
+            </button>
+            <button
+              phx-click="player_action"
+              phx-value-key="ArrowDown"
+              class="bg-blue-500 text-white p-2 rounded"
+            >
+              ⬇️
+            </button>
+          </div>
+          <button
+            phx-click="player_action"
+            phx-value-key="ArrowRight"
+            class="bg-blue-500 text-white p-2 rounded"
+          >
+            ➡️
+          </button>
+        </div>
+        <button
+          phx-click="player_action"
+          phx-value-key=" "
+          class="bg-red-500 text-white p-2 rounded ml-4"
+        >
+          🔥
+        </button>
+      </div>
     </div>
     """
   end
@@ -108,9 +152,11 @@ defmodule FlappyWeb.FlappyLive do
   def mount(_params, _session, socket) do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
+    is_mobile = game_width <= 450
 
     {:ok,
      socket
+     |> assign(:is_mobile, is_mobile)
      |> assign(:bird_x_position_percentage, 0)
      |> assign(:bird_y_position_percentage, 50)
      |> assign(:game_height, game_height)
@@ -181,6 +227,12 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
+  def handle_event("go_up", _, %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket) do
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_up(engine_pid)
+
+    {:noreply, socket}
+  end
+
   def handle_event(
         "player_action",
         %{"key" => "ArrowDown"},
@@ -217,6 +269,28 @@ defmodule FlappyWeb.FlappyLive do
         %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
       ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.fire_laser(engine_pid)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "player_action",
+        %{"key" => key},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
+    action =
+      case key do
+        "ArrowUp" -> &FlappyEngine.go_up/1
+        "ArrowDown" -> &FlappyEngine.go_down/1
+        "ArrowRight" -> &FlappyEngine.go_right/1
+        "ArrowLeft" -> &FlappyEngine.go_left/1
+        " " -> &FlappyEngine.fire_laser/1
+        _ -> nil
+      end
+
+    if action && GenServer.whereis(engine_pid) do
+      action.(engine_pid)
+    end
 
     {:noreply, socket}
   end
