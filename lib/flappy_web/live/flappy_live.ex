@@ -102,7 +102,6 @@ defmodule FlappyWeb.FlappyLive do
         <% end %>
       </div>
       <div
-
         :if={@game_started && !@game_state.game_over && @is_mobile}
         class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
       >
@@ -153,7 +152,7 @@ defmodule FlappyWeb.FlappyLive do
   def mount(_params, _session, socket) do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
-    is_mobile = game_width <= 768
+    is_mobile = game_width <= 450
 
     {:ok,
      socket
