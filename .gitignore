@@ -35,3 +35,7 @@ flappy-*.tar
 npm-debug.log
 /assets/node_modules/
 
+*.gz
+
+*.DS_Store
+

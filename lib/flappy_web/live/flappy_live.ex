@@ -5,6 +5,7 @@ defmodule FlappyWeb.FlappyLive do
   use FlappyWeb, :live_view
 
   alias Flappy.FlappyEngine
+  alias Flappy.Position
 
   def render(assigns) do
     ~H"""
@@ -76,7 +77,7 @@ defmodule FlappyWeb.FlappyLive do
           :if={@game_state.laser_beam && !@game_state.game_over}
           id="laser-beam"
           class="absolute bg-red-900 h-1 rounded-md"
-          style={"left: #{bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
+          style={"left: #{Position.bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{Position.bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
         >
         </div>
 
@@ -123,7 +124,7 @@ defmodule FlappyWeb.FlappyLive do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
     %{
-      player_position: player_position,
+      player: %{position: player_position},
       game_id: game_id
     } = game_state = FlappyEngine.get_game_state(engine_pid)
 
@@ -149,7 +150,10 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
-    %{player_position: player_position, game_id: game_id} =
+    %{
+      player: %{position: player_position},
+      game_id: game_id
+    } =
       game_state =
       FlappyEngine.get_game_state(engine_pid)
 
@@ -223,7 +227,7 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
     %{
-      player_position: player_position
+      player: %{position: player_position}
     } = game_state
 
     {_, _, player_percentage_x, player_percentage_y} = player_position
@@ -247,15 +251,5 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info({:game_state_update, game_state}, socket) do
     {:noreply, assign(socket, game_state: game_state)}
-  end
-
-  defp bird_x_eye_position(x_pos, %{player_size: {w, _h}, game_width: game_width}) do
-    w = w / game_width * 100
-    x_pos + w * 0.81
-  end
-
-  defp bird_y_eye_position(y_pos, %{player_size: {_w, h}, game_height: game_height}) do
-    h = h / game_height * 100
-    y_pos + h * 0.05
   end
 end

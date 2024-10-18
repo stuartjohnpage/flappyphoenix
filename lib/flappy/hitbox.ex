@@ -1,6 +1,9 @@
 defmodule Flappy.Hitbox do
   @moduledoc """
   Hitbox functions
+
+  You should change it so the hitbox only gets made once when the enemy is generated.
+
   """
   alias Flappy.Position
 
@@ -10,7 +13,7 @@ defmodule Flappy.Hitbox do
     detect_multiple_hits(enemies, laser_hitbox, game_state)
   end
 
-  def get_hit_power_ups(power_ups, %{player_size: player_size, player_position: player_position} = state) do
+  def get_hit_power_ups(power_ups, %{player: %{sprite: %{size: player_size}, position: player_position}} = state) do
     {player_length, player_height} = player_size
     {_, _, player_x, player_y} = player_position
 
@@ -21,7 +24,9 @@ defmodule Flappy.Hitbox do
   end
 
   # Note: at this point, we are working with percentage positions here
-  def check_for_enemy_collisions?(%{player_size: player_size, player_position: player_position, enemies: enemies} = state) do
+  def check_for_enemy_collisions?(
+        %{player: %{sprite: %{size: player_size}, position: player_position}, enemies: enemies} = state
+      ) do
     {player_length, player_height} = player_size
     {_, _, player_x, player_y} = player_position
 
@@ -61,7 +66,7 @@ defmodule Flappy.Hitbox do
   end
 
   defp laser_hitbox(game_state) do
-    {_, _, player_x, player_y} = game_state.player_position
+    {_, _, player_x, player_y} = game_state.player.position
     x = Position.bird_x_eye_position(player_x, game_state)
     y = Position.bird_y_eye_position(player_y, game_state)
     w = 100
