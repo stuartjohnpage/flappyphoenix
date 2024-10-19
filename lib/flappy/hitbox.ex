@@ -5,6 +5,7 @@ defmodule Flappy.Hitbox do
   You should change it so the hitbox only gets made once when the enemy is generated.
 
   """
+  alias Flappy.Explosion
   alias Flappy.Position
 
   def get_hit_enemies(enemies, game_state) do
@@ -130,14 +131,5 @@ defmodule Flappy.Hitbox do
     tr = {x + w, y}
 
     Polygons.Polygon.make([bl, tl, tr, br])
-  end
-
-  def remove_hit_enemies(state, enemies_hit) do
-    hit_ids = Enum.map(enemies_hit, & &1.id)
-    enemies = Enum.reject(state.enemies, fn enemy -> enemy.id in hit_ids end)
-
-    updated_score = state.score + Enum.count(enemies_hit) * 10
-
-    %{state | enemies: enemies, score: updated_score}
   end
 end
