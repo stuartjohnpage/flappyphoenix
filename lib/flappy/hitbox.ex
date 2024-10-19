@@ -5,7 +5,6 @@ defmodule Flappy.Hitbox do
   You should change it so the hitbox only gets made once when the enemy is generated.
 
   """
-  alias Flappy.Explosion
   alias Flappy.Position
 
   def get_hit_enemies(enemies, game_state) do
