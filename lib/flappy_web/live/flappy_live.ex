@@ -58,7 +58,7 @@ defmodule FlappyWeb.FlappyLive do
           :if={@game_started && !@game_state.game_over}
           id="bird-container"
           phx-window-keydown="player_action"
-          style={"position: absolute; left: #{@bird_x_position_percentage}%; top: #{@bird_y_position_percentage}%; "}
+          style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
         >
           <img
             src={
@@ -70,14 +70,13 @@ defmodule FlappyWeb.FlappyLive do
               if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
             }
           />
-          <%!-- <img src={~p"/images/test_blue.svg"} /> --%>
         </div>
 
         <div
           :if={@game_state.laser_beam && !@game_state.game_over}
           id="laser-beam"
           class="absolute bg-red-900 h-1 rounded-md"
-          style={"left: #{Position.bird_x_eye_position(@bird_x_position_percentage, @game_state)}%; top: #{Position.bird_y_eye_position(@bird_y_position_percentage, @game_state)}%; width: #{100 - @bird_x_position_percentage}%;"}
+          style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}
         >
         </div>
 
@@ -157,8 +156,6 @@ defmodule FlappyWeb.FlappyLive do
     {:ok,
      socket
      |> assign(:is_mobile, is_mobile)
-     |> assign(:bird_x_position_percentage, 0)
-     |> assign(:bird_y_position_percentage, 50)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
@@ -169,12 +166,7 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("start_game", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
-    %{
-      player: %{position: player_position},
-      game_id: game_id
-    } = game_state = FlappyEngine.get_game_state(engine_pid)
-
-    {_, _, player_percentage_x, player_percentage_y} = player_position
+    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
@@ -183,8 +175,6 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply,
      socket
      |> assign(:engine_pid, engine_pid)
-     |> assign(:bird_x_position_percentage, player_percentage_x)
-     |> assign(:bird_y_position_percentage, player_percentage_y)
      |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
   end
@@ -196,14 +186,7 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
 
-    %{
-      player: %{position: player_position},
-      game_id: game_id
-    } =
-      game_state =
-      FlappyEngine.get_game_state(engine_pid)
-
-    {_, _, player_percentage_x, player_percentage_y} = player_position
+    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
@@ -212,9 +195,7 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply,
      socket
      |> assign(:game_state, game_state)
-     |> assign(:engine_pid, engine_pid)
-     |> assign(:bird_x_position_percentage, player_percentage_x)
-     |> assign(:bird_y_position_percentage, player_percentage_y)}
+     |> assign(:engine_pid, engine_pid)}
   end
 
   def handle_event(
@@ -300,26 +281,12 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
-    %{
-      player: %{position: player_position}
-    } = game_state
-
-    {_, _, player_percentage_x, player_percentage_y} = player_position
-
     if game_state.game_over do
       FlappyEngine.stop_engine(engine_pid)
 
-      {:noreply,
-       socket
-       |> assign(:bird_x_position_percentage, player_percentage_x)
-       |> assign(:bird_y_position_percentage, player_percentage_y)
-       |> assign(:game_state, %{game_state | game_over: true})}
+      {:noreply, assign(socket, :game_state, %{game_state | game_over: true})}
     else
-      {:noreply,
-       socket
-       |> assign(:game_state, game_state)
-       |> assign(:bird_x_position_percentage, player_percentage_x)
-       |> assign(:bird_y_position_percentage, player_percentage_y)}
+      {:noreply, assign(socket, :game_state, game_state)}
     end
   end
 

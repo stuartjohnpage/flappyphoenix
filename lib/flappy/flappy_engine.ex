@@ -94,44 +94,45 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_call(:go_up, _from, %{player: player} = state) do
+  def handle_cast(:go_up, %{player: player} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity + @thrust
     player = %{player | velocity: {x_velocity, new_velocity}}
-    {:reply, state, %{state | player: player}}
+    {:noreply, %{state | player: player}}
   end
 
-  def handle_call(:go_down, _from, %{player: player} = state) do
+  def handle_cast(:go_down, %{player: player} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity - @thrust
     player = %{player | velocity: {x_velocity, new_velocity}}
-    {:reply, state, %{state | player: player}}
+    {:noreply, %{state | player: player}}
   end
 
-  def handle_call(:go_right, _from, %{player: player} = state) do
+  def handle_cast(:go_right, %{player: player} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity - @thrust
 
     player = %{player | velocity: {new_velocity, y_velocity}}
-    {:reply, state, %{state | player: player}}
+    {:noreply, %{state | player: player}}
   end
 
-  def handle_call(:go_left, _from, %{player: player} = state) do
+  def handle_cast(:go_left, %{player: player} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity + @thrust
 
     player = %{player | velocity: {new_velocity, y_velocity}}
-    {:reply, state, %{state | player: player}}
+    {:noreply, %{state | player: player}}
   end
 
-  def handle_call(:fire_laser, _from, state) do
+  def handle_cast(:fire_laser, state) do
     if state.laser_allowed do
-      {:reply, :ok, %{state | laser_beam: true, laser_duration: 3}}
+      {:noreply, %{state | laser_beam: true, laser_duration: 3}}
     else
-      {:reply, :ok, state}
+      {:noreply, state}
     end
   end
 
+  @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
@@ -382,22 +383,22 @@ defmodule Flappy.FlappyEngine do
   end
 
   def go_up(pid) do
-    GenServer.call(pid, :go_up)
+    GenServer.cast(pid, :go_up)
   end
 
   def go_down(pid) do
-    GenServer.call(pid, :go_down)
+    GenServer.cast(pid, :go_down)
   end
 
   def go_right(pid) do
-    GenServer.call(pid, :go_right)
+    GenServer.cast(pid, :go_right)
   end
 
   def go_left(pid) do
-    GenServer.call(pid, :go_left)
+    GenServer.cast(pid, :go_left)
   end
 
   def fire_laser(pid) do
-    GenServer.call(pid, :fire_laser)
+    GenServer.cast(pid, :fire_laser)
   end
 end

@@ -66,9 +66,8 @@ defmodule Flappy.Hitbox do
   end
 
   defp laser_hitbox(game_state) do
-    {_, _, player_x, player_y} = game_state.player.position
-    x = Position.bird_x_eye_position(player_x, game_state)
-    y = Position.bird_y_eye_position(player_y, game_state)
+    x = Position.bird_x_eye_position(game_state)
+    y = Position.bird_y_eye_position(game_state)
     w = 100
     h = 1
 
