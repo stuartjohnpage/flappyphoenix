@@ -163,6 +163,8 @@ defmodule FlappyWeb.FlappyLive do
     game_width = get_connect_params(socket)["viewport_width"] || 0
     is_mobile = game_width <= 450
 
+    Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:global")
+
     {:ok,
      socket
      |> assign(:is_mobile, is_mobile)
@@ -181,8 +183,6 @@ defmodule FlappyWeb.FlappyLive do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
     end
-
-    IO.inspect(game_state, label: :here_please)
 
     {:noreply,
      socket
@@ -304,5 +304,14 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info({:game_state_update, game_state}, socket) do
     {:noreply, assign(socket, game_state: game_state)}
+  end
+
+  def handle_info({:new_score, game_state}, socket) do
+    Process.send_after(self(), :clear_flash, 1000)
+    {:noreply, put_flash(socket, :info, "Someone just achieved the score: #{game_state.score}!")}
+  end
+
+  def handle_info(:clear_flash, socket) do
+    {:noreply, clear_flash(socket)}
   end
 end

@@ -173,26 +173,31 @@ defmodule Flappy.FlappyEngine do
     cond do
       collision? ->
         state = %{state | game_over: true}
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       y_pos < 0 ->
         state = %{state | game_over: true}
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       y_pos > state.game_height - player_height ->
         state = %{state | game_over: true}
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos < 0 ->
         state = %{state | game_over: true}
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
       x_pos > state.game_width - player_length ->
         state = %{state | game_over: true}
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
 
