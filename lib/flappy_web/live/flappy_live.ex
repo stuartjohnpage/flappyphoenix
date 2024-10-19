@@ -184,8 +184,6 @@ defmodule FlappyWeb.FlappyLive do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
     end
 
-    IO.inspect(game_state, label: :here_please)
-
     {:noreply,
      socket
      |> assign(:engine_pid, engine_pid)
