@@ -3,6 +3,7 @@ defmodule Flappy.FlappyEngine do
   use GenServer
 
   alias Flappy.Enemy
+  alias Flappy.Explosion
   alias Flappy.Hitbox
   alias Flappy.Player
   alias Flappy.Position
@@ -17,16 +18,17 @@ defmodule Flappy.FlappyEngine do
   @thrust -100
   @start_score 0
 
-  ### DIFFICULTY MULTIPLIER
+  ### GAME MULTIPLIERS
   @difficulty_score 500
+  @score_multiplier 10
 
   @power_up_sprites [
     %{image: "/images/laser-warning.svg", size: {50, 50}, name: :laser}
   ]
 
   @player_sprites [
-    %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :phoenix},
-    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :laser_phoenix},
+    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix},
+    %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :laser_phoenix},
     %{image: "/images/test_blue.svg", size: {128, 89}, name: :test}
   ]
 
@@ -49,7 +51,8 @@ defmodule Flappy.FlappyEngine do
             granted_powers: [],
             enemies: [%Enemy{}],
             power_ups: [%PowerUp{}],
-            player: %Player{}
+            player: %Player{},
+            explosions: [%Explosion{}]
 
   @impl true
   def init(%{game_height: game_height, game_width: game_width, game_id: game_id}) do
@@ -84,7 +87,8 @@ defmodule Flappy.FlappyEngine do
           sprite: Enum.random(@power_up_sprites),
           id: UUID.uuid4()
         }
-      ]
+      ],
+      explosions: []
     }
 
     # Start the periodic update
@@ -147,6 +151,7 @@ defmodule Flappy.FlappyEngine do
       |> update_player()
       |> update_enemies()
       |> update_power_ups()
+      |> update_explosions()
 
     {x_pos, y_pos, _, _} = player.position
 
@@ -162,7 +167,7 @@ defmodule Flappy.FlappyEngine do
 
     state =
       state
-      |> Hitbox.remove_hit_enemies(enemies_hit_by_beam)
+      |> remove_hit_enemies(enemies_hit_by_beam)
       |> grant_power_ups(power_ups_hit)
 
     cond do
@@ -366,6 +371,39 @@ defmodule Flappy.FlappyEngine do
       }
       | enemies
     ]
+  end
+
+  defp update_explosions(%{explosions: explosions} = state) do
+    explosions =
+      Enum.reduce(explosions, [], fn explosion, acc ->
+        if explosion.duration > 0 do
+          [%{explosion | duration: explosion.duration - 1} | acc]
+        else
+          acc
+        end
+      end)
+
+    %{state | explosions: explosions}
+  end
+
+  def remove_hit_enemies(state, enemies_hit) do
+    hit_ids = Enum.map(enemies_hit, & &1.id)
+    enemies = Enum.reject(state.enemies, fn enemy -> enemy.id in hit_ids end)
+
+    explosions =
+      Enum.map(enemies_hit, fn hit_enemy ->
+        %Explosion{
+          duration: 3,
+          position: hit_enemy.position,
+          velocity: hit_enemy.velocity,
+          sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+          id: UUID.uuid4()
+        }
+      end)
+
+    updated_score = state.score + Enum.count(enemies_hit) * @score_multiplier
+
+    %{state | enemies: enemies, explosions: explosions, score: updated_score}
   end
 
   ### PUBLIC API

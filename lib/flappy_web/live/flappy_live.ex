@@ -54,6 +54,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
       <div id="game-area" class="game-area w-screen h-screen -z-0">
+        <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}
           id="bird-container"
@@ -64,7 +65,7 @@ defmodule FlappyWeb.FlappyLive do
             src={
               if @game_state.laser_allowed,
                 do: ~p"/images/laser_phoenix.svg",
-                else: ~p"/images/flipped_phoenix.svg"
+                else: @game_state.player.sprite.image
             }
             class={
               if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
@@ -79,7 +80,7 @@ defmodule FlappyWeb.FlappyLive do
           style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}
         >
         </div>
-
+        <%!-- Enemies --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @game_state.enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
@@ -89,7 +90,7 @@ defmodule FlappyWeb.FlappyLive do
             <img src={enemy.sprite.image} />
           </div>
         <% end %>
-
+        <%!-- Power Ups --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = power_up <- @game_state.power_ups do %>
           <div
             id={"power-up-container-#{power_up.id}"}
@@ -97,6 +98,15 @@ defmodule FlappyWeb.FlappyLive do
             style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
           >
             <img src={power_up.sprite.image} />
+          </div>
+        <% end %>
+        <%!-- Explosions --%>
+        <%= for %{position: {_, _, x_pos, y_pos}} = explosion <- @game_state.explosions do %>
+          <div
+            id={"explosion-container-#{explosion.id}"}
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
+          >
+            <img src={explosion.sprite.image} />
           </div>
         <% end %>
       </div>
@@ -171,6 +181,8 @@ defmodule FlappyWeb.FlappyLive do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
     end
+
+    IO.inspect(game_state, label: :here_please)
 
     {:noreply,
      socket
