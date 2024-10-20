@@ -117,6 +117,7 @@ defmodule FlappyWeb.FlappyLive do
         <%= for %{position: {_, _, x_pos, y_pos}} = explosion <- @game_state.explosions do %>
           <div
             id={"explosion-container-#{explosion.id}"}
+            class="explosion"
             style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
           >
             <img src={explosion.sprite.image} />
