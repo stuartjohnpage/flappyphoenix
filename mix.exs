@@ -54,7 +54,8 @@ defmodule Flappy.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.0.0-rc.1", only: [:dev, :test], runtime: false},
       {:elixir_uuid, "~> 1.2"},
-      {:graphmath, "~> 2.6"}
+      {:graphmath, "~> 2.6"},
+      {:html_sanitize_ex, "~> 1.4"}
     ]
   end
 

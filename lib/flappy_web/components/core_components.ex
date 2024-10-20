@@ -152,7 +152,7 @@ defmodule FlappyWeb.CoreComponents do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id}>
+    <div id={@id} class="z-50 flex flex-col-reverse gap-2">
       <.flash kind={:score} flash={@flash} />
       <.flash kind={:info} title={gettext("Success!")} flash={@flash} />
       <.flash kind={:error} title={gettext("Error!")} flash={@flash} />
