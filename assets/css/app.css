@@ -8,6 +8,11 @@ html, body {
   overflow: hidden;
 }
 
+.small-flash {
+  font-size: 0.8rem;
+  padding: 0.5rem;
+}
+
 body {
   min-height: 100vh;
   background: url('/images/cityscape.webp') repeat;
