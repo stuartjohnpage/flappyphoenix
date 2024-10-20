@@ -36,7 +36,7 @@ defmodule FlappyWeb.FlappyLive do
               name="player_name"
               placeholder="Enter your name"
               class="rounded-l-md border-r-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              maxlength="20"
+              maxlength="10"
               required
             />
           </div>
@@ -299,10 +299,12 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("enter_name", %{"player_name" => player_name}, socket) do
-    if String.length(player_name) in 1..20 do
-      start_game(player_name, socket)
+    if String.length(player_name) in 1..10 do
+      player_name
+      |> HtmlSanitizeEx.strip_tags()
+      |> start_game(socket)
     else
-      {:noreply, put_flash(socket, :error, "Name must be between 1 and 20 characters")}
+      {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
     end
   end
 
