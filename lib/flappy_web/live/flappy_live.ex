@@ -182,6 +182,7 @@ defmodule FlappyWeb.FlappyLive do
 
     {:ok,
      socket
+     |> assign(:messages, [])
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
@@ -319,9 +320,11 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_state: game_state)}
   end
 
-  def handle_info({:new_score, %{player: %{name: player_name}} = game_state}, socket) do
-    Process.send_after(self(), :clear_flash, 5000)
-
+  def handle_info(
+        {:new_score, %{player: %{name: player_name}} = game_state},
+        %{assigns: %{messages: existing_messages}} = socket
+      ) do
+    # Process.send_after(self(), {:clear_flash, message_id}, 5000)
     mean_message =
       cond do
         game_state.score < 50 ->
@@ -346,7 +349,18 @@ defmodule FlappyWeb.FlappyLive do
           ])
       end
 
-    {:noreply, put_flash(socket, :score, "#{player_name} just scored #{game_state.score}! #{mean_message}")}
+    messages =
+      Enum.take(["#{player_name} just scored #{game_state.score}! #{mean_message}" | existing_messages], 3)
+
+    message_to_display =
+      messages
+      |> Enum.join("<br>")
+      |> Phoenix.HTML.raw()
+
+    {:noreply,
+     socket
+     |> assign(:messages, messages)
+     |> put_flash(:score, message_to_display)}
   end
 
   def handle_info(:clear_flash, socket) do
