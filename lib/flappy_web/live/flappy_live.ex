@@ -10,28 +10,40 @@ defmodule FlappyWeb.FlappyLive do
   def render(assigns) do
     ~H"""
     <div>
+      <%!-- Game start container --%>
       <div
         :if={!@game_state.game_over && !@game_started}
         class="flex flex-col items-center justify-center h-screen"
       >
-        <p class="text-white text-4xl">Get ready to play Flappy Phoenix!</p>
-        <br />
-        <p class="text-white text-2xl">Don't let the 🐦‍🔥 fly off of the screen!</p>
-        <br />
-        <p class="text-white text-2xl">Oh, and don't let those other frameworks touch you!</p>
-        <br />
-        <p class="text-white text-2xl">
-          Use the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
-        </p>
-        <br />
-        <p class="text-white text-2xl">
-          Press the space bar to activate your power-ups!
-        </p>
-        <br />
-        <p class="text-white text-2xl">👀 Good luck!</p>
-        <.button phx-click="start_game" class="bg-blue-500 rounded mt-10">
-          <p class="p-4 text-4xl text-white">Play</p>
-        </.button>
+        <p class="text-white text-4xl my-11">Get ready to play Flappy Phoenix!</p>
+        <div class="space-y-2">
+          <p class="text-white text-2xl text-center">Don't let the 🐦‍🔥 fly off of the screen!</p>
+          <p class="text-white text-2xl text-center">
+            Oh, and don't let those other frameworks touch you!
+          </p>
+          <p class="text-white text-2xl text-center">
+            Use the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
+          </p>
+          <p class="text-white text-2xl text-center">
+            Press the space bar to activate your power-ups!
+          </p>
+        </div>
+        <.simple_form for={@name_form} phx-submit="enter_name" class="flex flex-col items-center">
+          <div class="relative">
+            <.input
+              type="text"
+              value=""
+              name="player_name"
+              placeholder="Enter your name"
+              class="rounded-l-md border-r-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxlength="20"
+              required
+            />
+          </div>
+          <.button type="submit" class="bg-blue-500 rounded">
+            <p class="text-4xl text-white">Play</p>
+          </.button>
+        </.simple_form>
       </div>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@game_state.score != 69} class="text-white text-4xl z-50">
@@ -53,6 +65,7 @@ defmodule FlappyWeb.FlappyLive do
       >
         <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
+      <%!-- Game Area --%>
       <div id="game-area" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
@@ -162,11 +175,14 @@ defmodule FlappyWeb.FlappyLive do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
     is_mobile = game_width <= 450
+    name_form = to_form(%{})
 
     Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:global")
 
     {:ok,
      socket
+     |> assign(:name_form, name_form)
+     |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
@@ -175,28 +191,16 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_height, game_height)}
   end
 
-  def handle_event("start_game", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
-
-    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
-
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
-    end
-
-    {:noreply,
-     socket
-     |> assign(:engine_pid, engine_pid)
-     |> assign(:game_state, game_state)
-     |> assign(:game_started, true)}
-  end
-
   def handle_event("set_game_height", %{"height" => height}, socket) do
     {:noreply, assign(socket, game_height: height)}
   end
 
-  def handle_event("play_again", _, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width)
+  def handle_event(
+        "play_again",
+        _,
+        %{assigns: %{game_height: game_height, game_width: game_width, player_name: player_name}} = socket
+      ) do
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
 
     %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
 
@@ -292,6 +296,14 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
+  def handle_event("enter_name", %{"player_name" => player_name}, socket) do
+    if String.length(player_name) in 1..20 do
+      start_game(player_name, socket)
+    else
+      {:noreply, put_flash(socket, :error, "Name must be between 1 and 20 characters")}
+    end
+  end
+
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
     if game_state.game_over do
       FlappyEngine.stop_engine(engine_pid)
@@ -306,12 +318,54 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_state: game_state)}
   end
 
-  def handle_info({:new_score, game_state}, socket) do
-    Process.send_after(self(), :clear_flash, 1000)
-    {:noreply, put_flash(socket, :info, "Someone just achieved the score: #{game_state.score}!")}
+  def handle_info({:new_score, %{player: %{name: player_name}} = game_state}, socket) do
+    Process.send_after(self(), :clear_flash, 5000)
+
+    mean_message =
+      cond do
+        game_state.score < 50 ->
+          Enum.random([
+            "They shouldn't quit their day job...",
+            "Does something smell in here? Because they stunk!",
+            "They must be playing with their eyes closed."
+          ])
+
+        game_state.score < 100 ->
+          Enum.random([
+            "They must be playing with their eyes closed.",
+            "Were they trying to lose? Nailed it!",
+            "They made ... a choice."
+          ])
+
+        true ->
+          Enum.random([
+            "I’ve seen rocks with better reflexes!",
+            "A Phoenix should rise… not crash and burn!",
+            "Not every bird is meant to soar, I guess."
+          ])
+      end
+
+    {:noreply, put_flash(socket, :score, "#{player_name} just scored #{game_state.score}! #{mean_message}")}
   end
 
   def handle_info(:clear_flash, socket) do
     {:noreply, clear_flash(socket)}
+  end
+
+  defp start_game(player_name, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
+
+    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
+    end
+
+    {:noreply,
+     socket
+     |> assign(:player_name, player_name)
+     |> assign(:engine_pid, engine_pid)
+     |> assign(:game_state, game_state)
+     |> assign(:game_started, true)}
   end
 end
