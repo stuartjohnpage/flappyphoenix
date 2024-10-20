@@ -47,7 +47,13 @@ defmodule Flappy.Hitbox do
       entity_hitbox =
         entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
 
-      Polygons.Detection.collision?(single_hitbox, entity_hitbox)
+      ### Broad phase
+      if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
+        ### Narrow phase
+        Polygons.Detection.collision?(single_hitbox, entity_hitbox)
+      else
+        false
+      end
     end)
   end
 
