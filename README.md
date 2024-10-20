@@ -4,7 +4,7 @@ Welcome to **Flappy Phoenix**, a game built using Phoenix LiveView. In this game
 
 # Note: 
 
-When I wrote this, I had no idea https://github.com/moomerman/flappy-phoenix existed: a previous project which implements LiveView to create a faithful Flappy bird clone. You should check this project out if you are interested: it's pretty cool! 
+When I first started writing this, I had no idea https://github.com/moomerman/flappy-phoenix existed: a previous project which implements LiveView to create a faithful Flappy bird clone. You should check this project out if you are interested: it's pretty cool! 
 
 ## Table of Contents
 
