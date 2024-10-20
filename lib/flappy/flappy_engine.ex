@@ -1,5 +1,20 @@
 defmodule Flappy.FlappyEngine do
-  @moduledoc false
+  @moduledoc """
+  This module serves as the backbone of the FlappyPhoenix game, orchestrating all game logic and state management.
+
+  It orchestrates:
+
+  - Game initialization and state management
+  - Player movement and controls
+  - Enemy and power-up generation and updates
+  - Collision detection and game-over conditions
+  - Score tracking and difficulty progression
+  - Periodic game state updates and broadcasts
+
+  The engine provides a public API for starting/stopping the game, retrieving game state,
+  and controlling the player's actions.
+  """
+
   use GenServer
 
   alias Flappy.Enemy
@@ -29,7 +44,7 @@ defmodule Flappy.FlappyEngine do
   @player_sprites [
     %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix},
     %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :laser_phoenix},
-    %{image: "/images/test_blue.svg", size: {128, 89}, name: :test}
+    %{image: "/images/test_blue.svg", size: {100, 100}, name: :test}
   ]
 
   @enemy_sprites [
@@ -393,23 +408,28 @@ defmodule Flappy.FlappyEngine do
   end
 
   def remove_hit_enemies(state, enemies_hit) do
-    hit_ids = Enum.map(enemies_hit, & &1.id)
-    enemies = Enum.reject(state.enemies, fn enemy -> enemy.id in hit_ids end)
+    hit_ids = MapSet.new(enemies_hit, & &1.id)
 
-    explosions =
-      Enum.map(enemies_hit, fn hit_enemy ->
-        %Explosion{
-          duration: 3,
-          position: hit_enemy.position,
-          velocity: hit_enemy.velocity,
-          sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
-          id: UUID.uuid4()
-        }
+    {enemies, new_explosions} =
+      Enum.reduce(state.enemies, {[], []}, fn enemy, {remaining, explosions} ->
+        if MapSet.member?(hit_ids, enemy.id) do
+          explosion = %Explosion{
+            duration: 3,
+            position: enemy.position,
+            velocity: enemy.velocity,
+            sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+            id: UUID.uuid4()
+          }
+
+          {remaining, [explosion | explosions]}
+        else
+          {[enemy | remaining], explosions}
+        end
       end)
 
-    updated_score = state.score + Enum.count(enemies_hit) * @score_multiplier
+    updated_score = state.score + length(new_explosions) * @score_multiplier
 
-    %{state | enemies: enemies, explosions: explosions, score: updated_score}
+    %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, score: updated_score}
   end
 
   ### PUBLIC API
