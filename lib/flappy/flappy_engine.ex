@@ -55,7 +55,7 @@ defmodule Flappy.FlappyEngine do
             explosions: [%Explosion{}]
 
   @impl true
-  def init(%{game_height: game_height, game_width: game_width, game_id: game_id}) do
+  def init(%{game_height: game_height, game_width: game_width, game_id: game_id, player_name: player_name}) do
     gravity = @gravity / game_height * 500
     max_generation_height = round(game_height - game_height / 4)
 
@@ -67,6 +67,7 @@ defmodule Flappy.FlappyEngine do
       score: @start_score,
       gravity: gravity,
       player: %Player{
+        name: player_name,
         position: {0, game_height / 2, 0, game_height / 2},
         velocity: {0, 0},
         sprite: List.first(@player_sprites),
@@ -412,9 +413,15 @@ defmodule Flappy.FlappyEngine do
   end
 
   ### PUBLIC API
-  def start_engine(game_height, game_width) do
+  def start_engine(game_height, game_width, player_name) do
     game_id = UUID.uuid4()
-    GenServer.start_link(__MODULE__, %{game_height: game_height, game_width: game_width, game_id: game_id})
+
+    GenServer.start_link(__MODULE__, %{
+      game_height: game_height,
+      game_width: game_width,
+      game_id: game_id,
+      player_name: player_name
+    })
   end
 
   def stop_engine(pid) do
