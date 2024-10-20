@@ -36,7 +36,7 @@ defmodule FlappyWeb.FlappyLive do
               name="player_name"
               placeholder="Enter your name"
               class="rounded-l-md border-r-0 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              maxlength="20"
+              maxlength="10"
               required
             />
           </div>
@@ -182,6 +182,7 @@ defmodule FlappyWeb.FlappyLive do
 
     {:ok,
      socket
+     |> assign(:messages, [])
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
@@ -298,10 +299,12 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_event("enter_name", %{"player_name" => player_name}, socket) do
-    if String.length(player_name) in 1..20 do
-      start_game(player_name, socket)
+    if String.length(player_name) in 1..10 do
+      player_name
+      |> HtmlSanitizeEx.strip_tags()
+      |> start_game(socket)
     else
-      {:noreply, put_flash(socket, :error, "Name must be between 1 and 20 characters")}
+      {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
     end
   end
 
@@ -319,9 +322,11 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, assign(socket, game_state: game_state)}
   end
 
-  def handle_info({:new_score, %{player: %{name: player_name}} = game_state}, socket) do
-    Process.send_after(self(), :clear_flash, 5000)
-
+  def handle_info(
+        {:new_score, %{player: %{name: player_name}} = game_state},
+        %{assigns: %{messages: existing_messages}} = socket
+      ) do
+    # Process.send_after(self(), {:clear_flash, message_id}, 5000)
     mean_message =
       cond do
         game_state.score < 50 ->
@@ -346,7 +351,18 @@ defmodule FlappyWeb.FlappyLive do
           ])
       end
 
-    {:noreply, put_flash(socket, :score, "#{player_name} just scored #{game_state.score}! #{mean_message}")}
+    messages =
+      Enum.take(["#{player_name} just scored #{game_state.score}! #{mean_message}" | existing_messages], 3)
+
+    message_to_display =
+      messages
+      |> Enum.join("<br>")
+      |> Phoenix.HTML.raw()
+
+    {:noreply,
+     socket
+     |> assign(:messages, messages)
+     |> put_flash(:score, message_to_display)}
   end
 
   def handle_info(:clear_flash, socket) do
