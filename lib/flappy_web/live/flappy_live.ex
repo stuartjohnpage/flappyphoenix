@@ -16,18 +16,23 @@ defmodule FlappyWeb.FlappyLive do
         class="flex flex-col items-center justify-center h-screen"
       >
         <p class="text-white text-4xl my-11">Get ready to play Flappy Phoenix!</p>
+        
         <div class="space-y-2">
           <p class="text-white text-2xl text-center">Don't let the 🐦‍🔥 fly off of the screen!</p>
+          
           <p class="text-white text-2xl text-center">
             Oh, and don't let those other frameworks touch you!
           </p>
+          
           <p class="text-white text-2xl text-center">
             Use the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
           </p>
+          
           <p class="text-white text-2xl text-center">
             Press the space bar to activate your power-ups!
           </p>
         </div>
+        
         <.simple_form for={@name_form} phx-submit="enter_name" class="flex flex-col items-center">
           <div class="relative">
             <.input
@@ -40,32 +45,34 @@ defmodule FlappyWeb.FlappyLive do
               required
             />
           </div>
+          
           <.button type="submit" class="bg-blue-500 rounded">
             <p class="text-4xl text-white">Play</p>
           </.button>
         </.simple_form>
       </div>
+      
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@game_state.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
-        <%!-- start Gavin's idea --%>
+         <%!-- start Gavin's idea --%>
         <p :if={@game_state.score == 69} class="text-white text-4xl z-50">Nice!</p>
-        <%!-- end Gavin's idea --%>
-
-        <br />
+         <%!-- end Gavin's idea --%> <br />
         <p class="text-white text-4xl z-50">Your final score was <%= @game_state.score %></p>
+        
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
       </div>
+      
       <div
         id="score-container"
         class=" z-50 absolute top-0 left-0 ml-11 mt-11 bg-black rounded-md p-2"
       >
         <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
       </div>
-      <%!-- Game Area --%>
+       <%!-- Game Area --%>
       <div id="game-area" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
@@ -85,7 +92,7 @@ defmodule FlappyWeb.FlappyLive do
             }
           />
         </div>
-
+        
         <div
           :if={@game_state.laser_beam && !@game_state.game_over}
           id="laser-beam"
@@ -93,7 +100,7 @@ defmodule FlappyWeb.FlappyLive do
           style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}
         >
         </div>
-        <%!-- Enemies --%>
+         <%!-- Enemies --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @game_state.enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
@@ -103,7 +110,7 @@ defmodule FlappyWeb.FlappyLive do
             <img src={enemy.sprite.image} />
           </div>
         <% end %>
-        <%!-- Power Ups --%>
+         <%!-- Power Ups --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = power_up <- @game_state.power_ups do %>
           <div
             id={"power-up-container-#{power_up.id}"}
@@ -113,7 +120,7 @@ defmodule FlappyWeb.FlappyLive do
             <img src={power_up.sprite.image} />
           </div>
         <% end %>
-        <%!-- Explosions --%>
+         <%!-- Explosions --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = explosion <- @game_state.explosions do %>
           <div
             id={"explosion-container-#{explosion.id}"}
@@ -124,6 +131,7 @@ defmodule FlappyWeb.FlappyLive do
           </div>
         <% end %>
       </div>
+      
       <div
         :if={@game_started && !@game_state.game_over && @is_mobile}
         class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
@@ -136,6 +144,7 @@ defmodule FlappyWeb.FlappyLive do
           >
             ⬅️
           </button>
+          
           <div class="grid grid-rows-2 gap-2">
             <button
               phx-click="player_action"
@@ -144,6 +153,7 @@ defmodule FlappyWeb.FlappyLive do
             >
               ⬆️
             </button>
+            
             <button
               phx-click="player_action"
               phx-value-key="ArrowDown"
@@ -152,6 +162,7 @@ defmodule FlappyWeb.FlappyLive do
               ⬇️
             </button>
           </div>
+          
           <button
             phx-click="player_action"
             phx-value-key="ArrowRight"
@@ -160,6 +171,7 @@ defmodule FlappyWeb.FlappyLive do
             ➡️
           </button>
         </div>
+        
         <button
           phx-click="player_action"
           phx-value-key=" "
@@ -226,12 +238,6 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply, socket}
   end
 
-  def handle_event("go_up", _, %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket) do
-    if GenServer.whereis(engine_pid), do: FlappyEngine.go_up(engine_pid)
-
-    {:noreply, socket}
-  end
-
   def handle_event(
         "player_action",
         %{"key" => "ArrowDown"},
@@ -255,6 +261,46 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event(
         "player_action",
         %{"key" => "ArrowLeft"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_left(engine_pid)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "player_action",
+        %{"key" => "W"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_up(engine_pid)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "player_action",
+        %{"key" => "S"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_down(engine_pid)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "player_action",
+        %{"key" => "D"},
+        %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
+      ) do
+    if GenServer.whereis(engine_pid), do: FlappyEngine.go_right(engine_pid)
+
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "player_action",
+        %{"key" => "A"},
         %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
       ) do
     if GenServer.whereis(engine_pid), do: FlappyEngine.go_left(engine_pid)
