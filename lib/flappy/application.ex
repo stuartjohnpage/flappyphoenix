@@ -8,6 +8,7 @@ defmodule Flappy.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      Flappy.Repo,
       FlappyWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:flappy, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Flappy.PubSub},
@@ -16,8 +17,7 @@ defmodule Flappy.Application do
       # Start a worker by calling: Flappy.Worker.start_link(arg)
       # {Flappy.Worker, arg},
       # Start to serve requests, typically the last entry
-      FlappyWeb.Endpoint,
-      Flappy.Repo
+      FlappyWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

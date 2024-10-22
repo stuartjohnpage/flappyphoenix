@@ -9,11 +9,10 @@ import Config
 config :flappy, Flappy.Repo,
   username: "postgres",
   password: "postgres",
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   hostname: "localhost",
   database: "flappy_repo",
   stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
 config :flappy, FlappyWeb.Endpoint,

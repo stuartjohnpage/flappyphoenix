@@ -234,6 +234,7 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply,
      socket
      |> assign(:game_state, game_state)
+     |> assign(:current_high_scores, current_high_scores)
      |> assign(:engine_pid, engine_pid)}
   end
 
