@@ -113,7 +113,7 @@ defmodule FlappyWeb.FlappyLive do
         <%= for %{position: {_, _, x_pos, y_pos}} = power_up <- @game_state.power_ups do %>
           <div
             id={"power-up-container-#{power_up.id}"}
-            class="absolute power-up-glow"
+            class="absolute"
             style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
           >
             <img src={power_up.sprite.image} />
@@ -286,7 +286,9 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
     if game_state.game_over do
-      FlappyEngine.stop_engine(engine_pid)
+      if Process.alive?(engine_pid) do
+        FlappyEngine.stop_engine(engine_pid)
+      end
 
       {:noreply, assign(socket, :game_state, %{game_state | game_over: true})}
     else

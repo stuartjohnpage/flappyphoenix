@@ -39,7 +39,8 @@ defmodule Flappy.FlappyEngine do
   @score_multiplier 10
 
   @power_up_sprites [
-    %{image: "/images/laser-warning.svg", size: {50, 50}, name: :laser}
+    %{image: "/images/laser.svg", size: {50, 50}, name: :laser},
+    %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb}
   ]
 
   @player_sprites [
@@ -64,7 +65,6 @@ defmodule Flappy.FlappyEngine do
             laser_allowed: false,
             laser_beam: false,
             laser_duration: 0,
-            granted_powers: [],
             enemies: [%Enemy{}],
             power_ups: [%PowerUp{}],
             player: %Player{},
@@ -88,7 +88,8 @@ defmodule Flappy.FlappyEngine do
         player
         | position: {0, game_height / 2, 0, game_height / 2},
           velocity: {0, 0},
-          sprite: List.first(@player_sprites)
+          sprite: List.first(@player_sprites),
+          granted_powers: []
       },
       enemies: [
         %Enemy{
@@ -212,15 +213,15 @@ defmodule Flappy.FlappyEngine do
 
   def handle_info(:score_tick, %{player: player} = state) do
     granted_powers =
-      state.granted_powers
+      player.granted_powers
       |> Enum.map(fn
         {_power, 0} -> nil
         {power, duration_left} -> {power, duration_left - 1}
       end)
       |> Enum.reject(&is_nil/1)
 
-    player = %{player | score: player.score + 1}
-    state = %{state | player: player, granted_powers: granted_powers}
+    player = %{player | score: player.score + 1, granted_powers: granted_powers}
+    state = %{state | player: player}
     state = if rem(player.score, 2) == 0, do: %{state | enemies: generate_enemy(state)}, else: state
     state = if rem(player.score, 10) == 0, do: %{state | power_ups: generate_power_up(state)}, else: state
 
@@ -309,11 +310,11 @@ defmodule Flappy.FlappyEngine do
     %{state | enemies: enemies}
   end
 
-  defp grant_power_ups(state, power_ups_hit) do
+  defp grant_power_ups(%{player: player} = state, power_ups_hit) do
     hit_ids = Enum.map(power_ups_hit, & &1.id)
 
     {power_ups, granted_powers} =
-      Enum.reduce(state.power_ups, {[], state.granted_powers}, fn power_up, {power_ups, granted_powers} ->
+      Enum.reduce(state.power_ups, {[], player.granted_powers}, fn power_up, {power_ups, granted_powers} ->
         if power_up.id in hit_ids do
           {power_ups, [{power_up.sprite.name, 5} | granted_powers]}
         else
@@ -327,7 +328,38 @@ defmodule Flappy.FlappyEngine do
         _ -> false
       end)
 
-    %{state | power_ups: power_ups, granted_powers: granted_powers, laser_allowed: laser_allowed}
+    {bomb_hit?, explosions} =
+      Enum.reduce(power_ups_hit, {false, state.explosions}, fn power_up, {_bomb_hit, explosions} ->
+        if power_up.sprite.name == :bomb do
+          new_explosion = %Explosion{
+            duration: 3,
+            position: power_up.position,
+            velocity: power_up.velocity,
+            sprite: %{image: "/images/explosion.svg", size: {500, 500}, name: :explosion},
+            id: UUID.uuid4()
+          }
+
+          {true, [new_explosion | explosions]}
+        else
+          {false, explosions}
+        end
+      end)
+
+    {score, enemies} =
+      if bomb_hit?,
+        do: {player.score + length(state.enemies) * @score_multiplier, []},
+        else: {player.score, state.enemies}
+
+    player = %{player | granted_powers: granted_powers, score: score}
+
+    %{
+      state
+      | power_ups: power_ups,
+        player: player,
+        laser_allowed: laser_allowed,
+        enemies: enemies,
+        explosions: explosions
+    }
   end
 
   ### GENERATION FUNCTIONS
