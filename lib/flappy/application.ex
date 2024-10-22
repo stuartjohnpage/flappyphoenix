@@ -8,8 +8,8 @@ defmodule Flappy.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      FlappyWeb.Telemetry,
       Flappy.Repo,
+      FlappyWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:flappy, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Flappy.PubSub},
       # Start the Finch HTTP client for sending emails

@@ -7,7 +7,7 @@ defmodule FlappyWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_flappy_key",
-    signing_salt: "D47uDXY8",
+    signing_salt: "aM2XSa/m",
     same_site: "Lax"
   ]
 
@@ -31,7 +31,6 @@ defmodule FlappyWeb.Endpoint do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :flappy
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,
