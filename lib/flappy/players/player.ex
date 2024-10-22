@@ -17,6 +17,7 @@ defmodule Flappy.Players.Player do
     field(:version, :integer)
 
     field(:position, :any, virtual: true)
+    field(:granted_powers, :any, virtual: true)
     field(:velocity, :any, virtual: true)
     field(:sprite, :map, virtual: true)
   end
