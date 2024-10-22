@@ -28,7 +28,7 @@ config :flappy, FlappyWeb.Endpoint,
   live_view: [signing_salt: "NkY+DU8z"]
 
 config :flappy, ecto_repos: [Flappy.Repo]
-config :flappy, game_version: "2"
+config :flappy, game_version: "1"
 # Configure esbuild (the version is required)
 
 # Configures the mailer
