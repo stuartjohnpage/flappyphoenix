@@ -20,5 +20,5 @@ defmodule FlappyWeb.Gettext do
 
   See the [Gettext Docs](https://hexdocs.pm/gettext) for detailed usage.
   """
-  use Gettext.Backend, otp_app: :flappy
+  use Gettext, otp_app: :flappy
 end

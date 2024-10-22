@@ -19,19 +19,20 @@ defmodule FlappyWeb.ConnCase do
 
   using do
     quote do
-      use FlappyWeb, :verified_routes
-
-      import FlappyWeb.ConnCase
-      import Phoenix.ConnTest
-      import Plug.Conn
       # The default endpoint for testing
       @endpoint FlappyWeb.Endpoint
 
+      use FlappyWeb, :verified_routes
+
       # Import conveniences for testing with connections
+      import Plug.Conn
+      import Phoenix.ConnTest
+      import FlappyWeb.ConnCase
     end
   end
 
-  setup _tags do
+  setup tags do
+    Flappy.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

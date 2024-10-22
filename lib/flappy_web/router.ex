@@ -1,8 +1,6 @@
 defmodule FlappyWeb.Router do
   use FlappyWeb, :router
 
-  import Phoenix.LiveView.Router
-
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -19,7 +17,7 @@ defmodule FlappyWeb.Router do
   scope "/", FlappyWeb do
     pipe_through :browser
 
-    live "/", FlappyLive
+    get "/", PageController, :home
   end
 
   # Other scopes may use custom stacks.
