@@ -16,7 +16,8 @@ defmodule Flappy.Application do
       # Start a worker by calling: Flappy.Worker.start_link(arg)
       # {Flappy.Worker, arg},
       # Start to serve requests, typically the last entry
-      FlappyWeb.Endpoint
+      FlappyWeb.Endpoint,
+      Flappy.Repo
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

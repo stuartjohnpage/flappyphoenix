@@ -7,7 +7,6 @@
 # General application configuration
 import Config
 
-# Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",
   flappy: [
@@ -16,16 +15,16 @@ config :esbuild,
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ]
 
-# Configures the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
 config :flappy, Flappy.Mailer, adapter: Swoosh.Adapters.Local
 
-# Configures the endpoint
+config :flappy, Flappy.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "flappy_repo",
+  stacktrace: true,
+  pool_size: 10
+
 config :flappy, FlappyWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
@@ -36,6 +35,19 @@ config :flappy, FlappyWeb.Endpoint,
   pubsub_server: Flappy.PubSub,
   live_view: [signing_salt: "NkY+DU8z"]
 
+config :flappy, ecto_repos: [Flappy.Repo]
+config :flappy, game_version: "2"
+# Configure esbuild (the version is required)
+
+# Configures the mailer
+#
+# By default it uses the "Local" adapter which stores the emails
+# locally. You can see the emails in your browser, at "/dev/mailbox".
+#
+# For production it's recommended to configure a different adapter
+# at the `config/runtime.exs`.
+
+# Configures the endpoint
 config :flappy,
   generators: [timestamp_type: :utc_datetime]
 
