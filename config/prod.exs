@@ -18,16 +18,3 @@ config :swoosh, local: false
 
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.
-
-# Configure your database using the DATABASE_URL environment variable
-config :your_app, YourApp.Repo,
-  url: System.get_env("DATABASE_URL"),
-  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-  ssl: true
-
-# Configuring the secret key base
-config :your_app, YourAppWeb.Endpoint,
-  url: [host: System.get_env("PHX_HOST") || "example.com", port: 443],
-  secret_key_base: System.get_env("SECRET_KEY_BASE"),
-  http: [:inet6, port: String.to_integer(System.get_env("PORT") || "4000")],
-  server: true
