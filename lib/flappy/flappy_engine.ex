@@ -20,7 +20,8 @@ defmodule Flappy.FlappyEngine do
   alias Flappy.Enemy
   alias Flappy.Explosion
   alias Flappy.Hitbox
-  alias Flappy.Player
+  alias Flappy.Players
+  alias Flappy.Players.Player
   alias Flappy.Position
   alias Flappy.PowerUp
 
@@ -55,10 +56,10 @@ defmodule Flappy.FlappyEngine do
 
   # Game state
   defstruct game_id: nil,
+            current_high_scores: [],
             game_over: false,
             game_height: 0,
             game_width: 0,
-            score: 0,
             gravity: 0,
             laser_allowed: false,
             laser_beam: false,
@@ -73,20 +74,21 @@ defmodule Flappy.FlappyEngine do
   def init(%{game_height: game_height, game_width: game_width, game_id: game_id, player_name: player_name}) do
     gravity = @gravity / game_height * 500
     max_generation_height = round(game_height - game_height / 4)
+    player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
+    current_high_scores = Players.get_current_high_scores()
 
     state = %__MODULE__{
+      current_high_scores: current_high_scores,
       game_over: false,
       game_id: game_id,
       game_height: game_height,
       game_width: game_width,
-      score: @start_score,
       gravity: gravity,
-      player: %Player{
-        name: player_name,
-        position: {0, game_height / 2, 0, game_height / 2},
-        velocity: {0, 0},
-        sprite: List.first(@player_sprites),
-        id: UUID.uuid4()
+      player: %{
+        player
+        | position: {0, game_height / 2, 0, game_height / 2},
+          velocity: {0, 0},
+          sprite: List.first(@player_sprites)
       },
       enemies: [
         %Enemy{
@@ -188,34 +190,19 @@ defmodule Flappy.FlappyEngine do
 
     cond do
       collision? ->
-        state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
-        {:noreply, state}
+        calculate_score_and_update_view(state)
 
       y_pos < 0 ->
-        state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
-        {:noreply, state}
+        calculate_score_and_update_view(state)
 
       y_pos > state.game_height - player_height ->
-        state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
-        {:noreply, state}
+        calculate_score_and_update_view(state)
 
       x_pos < 0 ->
-        state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
-        {:noreply, state}
+        calculate_score_and_update_view(state)
 
       x_pos > state.game_width - player_length ->
-        state = %{state | game_over: true}
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
-        {:noreply, state}
+        calculate_score_and_update_view(state)
 
       true ->
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
@@ -223,7 +210,7 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  def handle_info(:score_tick, state) do
+  def handle_info(:score_tick, %{player: player} = state) do
     granted_powers =
       state.granted_powers
       |> Enum.map(fn
@@ -232,9 +219,10 @@ defmodule Flappy.FlappyEngine do
       end)
       |> Enum.reject(&is_nil/1)
 
-    state = %{state | score: state.score + 1, granted_powers: granted_powers}
-    state = if rem(state.score, 2) == 0, do: %{state | enemies: generate_enemy(state)}, else: state
-    state = if rem(state.score, 10) == 0, do: %{state | power_ups: generate_power_up(state)}, else: state
+    player = %{player | score: player.score + 1}
+    state = %{state | player: player, granted_powers: granted_powers}
+    state = if rem(player.score, 2) == 0, do: %{state | enemies: generate_enemy(state)}, else: state
+    state = if rem(player.score, 10) == 0, do: %{state | power_ups: generate_power_up(state)}, else: state
 
     {:noreply, state}
   end
@@ -367,7 +355,7 @@ defmodule Flappy.FlappyEngine do
     ]
   end
 
-  defp maybe_generate_enemy(%{enemies: enemies, score: score} = state) do
+  defp maybe_generate_enemy(%{enemies: enemies, player: %{score: score}} = state) do
     # The game gets harder as the score increases
     difficultly_rating = if score < @difficulty_score - 5, do: score, else: @difficulty_score - 4
     difficultly_cap = @difficulty_score - difficultly_rating
@@ -407,7 +395,7 @@ defmodule Flappy.FlappyEngine do
     %{state | explosions: explosions}
   end
 
-  def remove_hit_enemies(state, enemies_hit) do
+  def remove_hit_enemies(%{player: player} = state, enemies_hit) do
     hit_ids = MapSet.new(enemies_hit, & &1.id)
 
     {enemies, new_explosions} =
@@ -427,9 +415,25 @@ defmodule Flappy.FlappyEngine do
         end
       end)
 
-    updated_score = state.score + length(new_explosions) * @score_multiplier
+    updated_score = player.score + length(new_explosions) * @score_multiplier
+    player = %{player | score: updated_score}
 
-    %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, score: updated_score}
+    %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, player: player}
+  end
+
+  defp calculate_score_and_update_view(
+         %{player: player, game_id: game_id, current_high_scores: current_high_scores} = state
+       ) do
+    state = %{state | game_over: true}
+    Players.update_player(player, %{score: player.score})
+    high_score? = Enum.any?(current_high_scores, fn {_name, score} -> player.score > score end)
+
+    if high_score?,
+      do: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:high_score, state}),
+      else: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
+
+    Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
+    {:noreply, state}
   end
 
   ### PUBLIC API
@@ -444,6 +448,7 @@ defmodule Flappy.FlappyEngine do
     })
   end
 
+  @spec stop_engine(atom() | pid() | {atom(), any()} | {:via, atom(), any()}) :: :ok
   def stop_engine(pid) do
     GenServer.stop(pid)
   end
@@ -470,5 +475,9 @@ defmodule Flappy.FlappyEngine do
 
   def fire_laser(pid) do
     GenServer.cast(pid, :fire_laser)
+  end
+
+  def get_game_version do
+    Application.get_env(:flappy, :game_version, "1")
   end
 end

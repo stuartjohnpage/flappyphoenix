@@ -53,13 +53,13 @@ defmodule FlappyWeb.FlappyLive do
       </div>
 
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
-        <p :if={@game_state.score != 69} class="text-white text-4xl z-50">
+        <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
         <%!-- start Gavin's idea --%>
-        <p :if={@game_state.score == 69} class="text-white text-4xl z-50">Nice!</p>
+        <p :if={@game_state.player.score == 69} class="text-white text-4xl z-50">Nice!</p>
         <%!-- end Gavin's idea --%> <br />
-        <p class="text-white text-4xl z-50">Your final score was <%= @game_state.score %></p>
+        <p class="text-white text-4xl z-50">Your final score was <%= @game_state.player.score %></p>
 
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
@@ -70,7 +70,7 @@ defmodule FlappyWeb.FlappyLive do
         id="score-container"
         class=" z-50 absolute top-0 left-0 ml-11 mt-11 bg-black rounded-md p-2"
       >
-        <p class="text-white text-4xl">Score: <%= @game_state.score %></p>
+        <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
       <div id="game-area" class="game-area w-screen h-screen -z-0">
@@ -104,8 +104,7 @@ defmodule FlappyWeb.FlappyLive do
         <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @game_state.enemies do %>
           <div
             id={"enemy-container-#{enemy.id}"}
-            class="absolute"
-            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%;"}
+            style={"position: absolute; left: #{x_pos}%; top: #{y_pos}%; z-index: #{calculate_z_index(enemy.id)};"}
           >
             <img src={enemy.sprite.image} />
           </div>
@@ -180,6 +179,15 @@ defmodule FlappyWeb.FlappyLive do
           🔥
         </button>
       </div>
+      <%!-- High Scores --%>
+      <div class="fixed bottom-2 left-2 ml-2 w-60 z-50 rounded-lg p-3 text-sky-400">
+        <h3 class="font-bold mb-2">High Scores</h3>
+        <ul>
+          <%= for {name, score} <- @current_high_scores do %>
+            <li><%= name %>: <%= score %></li>
+          <% end %>
+        </ul>
+      </div>
     </div>
     """
   end
@@ -201,6 +209,7 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
+     |> assign(:current_high_scores, [])
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
   end
@@ -216,7 +225,7 @@ defmodule FlappyWeb.FlappyLive do
       ) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
 
-    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
+    %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
@@ -225,6 +234,7 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply,
      socket
      |> assign(:game_state, game_state)
+     |> assign(:current_high_scores, current_high_scores)
      |> assign(:engine_pid, engine_pid)}
   end
 
@@ -244,21 +254,13 @@ defmodule FlappyWeb.FlappyLive do
         %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
       ) do
     action =
-      case key do
-        "ArrowUp" -> &FlappyEngine.go_up/1
-        "W" -> &FlappyEngine.go_up/1
-        "w" -> &FlappyEngine.go_up/1
-        "ArrowDown" -> &FlappyEngine.go_down/1
-        "S" -> &FlappyEngine.go_down/1
-        "s" -> &FlappyEngine.go_down/1
-        "ArrowRight" -> &FlappyEngine.go_right/1
-        "D" -> &FlappyEngine.go_right/1
-        "d" -> &FlappyEngine.go_right/1
-        "ArrowLeft" -> &FlappyEngine.go_left/1
-        "A" -> &FlappyEngine.go_left/1
-        "a" -> &FlappyEngine.go_left/1
+      case String.downcase(key) do
+        key when key in ["arrowup", "w"] -> &FlappyEngine.go_up/1
+        key when key in ["arrowdown", "s"] -> &FlappyEngine.go_down/1
+        key when key in ["arrowright", "d"] -> &FlappyEngine.go_right/1
+        key when key in ["arrowleft", "a"] -> &FlappyEngine.go_left/1
         " " -> &FlappyEngine.fire_laser/1
-        _ -> nil
+        _key -> nil
       end
 
     if action && GenServer.whereis(engine_pid) do
@@ -297,20 +299,45 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_info(
-        {:new_score, %{player: %{name: player_name}} = game_state},
+        {:high_score, %{player: %{name: player_name, score: score}}},
+        %{assigns: %{messages: existing_messages, current_high_scores: current_high_scores}} = socket
+      ) do
+    new_high_scores =
+      [{player_name, score} | current_high_scores]
+      |> Enum.sort_by(fn {_, score} -> score end, :desc)
+      |> Enum.take(5)
+
+    nice_message = "NEW HIGH SCORE FROM #{player_name}, who got a whopping score of #{score}!"
+
+    messages =
+      Enum.take([nice_message | existing_messages], 3)
+
+    message_to_display =
+      messages
+      |> Enum.join("<br>")
+      |> Phoenix.HTML.raw()
+
+    {:noreply,
+     socket
+     |> assign(:messages, messages)
+     |> assign(:current_high_scores, new_high_scores)
+     |> put_flash(:score, message_to_display)}
+  end
+
+  def handle_info(
+        {:new_score, %{player: %{name: player_name, score: score}}},
         %{assigns: %{messages: existing_messages}} = socket
       ) do
-    # Process.send_after(self(), {:clear_flash, message_id}, 5000)
     mean_message =
       cond do
-        game_state.score < 50 ->
+        score < 50 ->
           Enum.random([
             "They shouldn't quit their day job...",
             "Does something smell in here? Because they stunk!",
             "They must be playing with their eyes closed."
           ])
 
-        game_state.score < 100 ->
+        score < 100 ->
           Enum.random([
             "They must be playing with their eyes closed.",
             "Were they trying to lose? Nailed it!",
@@ -326,7 +353,7 @@ defmodule FlappyWeb.FlappyLive do
       end
 
     messages =
-      Enum.take(["#{player_name} just scored #{game_state.score}! #{mean_message}" | existing_messages], 3)
+      Enum.take(["#{player_name} just scored #{score}! #{mean_message}" | existing_messages], 3)
 
     message_to_display =
       messages
@@ -339,14 +366,10 @@ defmodule FlappyWeb.FlappyLive do
      |> put_flash(:score, message_to_display)}
   end
 
-  def handle_info(:clear_flash, socket) do
-    {:noreply, clear_flash(socket)}
-  end
-
   defp start_game(player_name, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
     {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
 
-    %{game_id: game_id} = game_state = FlappyEngine.get_game_state(engine_pid)
+    %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Flappy.PubSub, "flappy:game_state:#{game_id}")
@@ -355,8 +378,21 @@ defmodule FlappyWeb.FlappyLive do
     {:noreply,
      socket
      |> assign(:player_name, player_name)
+     |> assign(:current_high_scores, current_high_scores)
      |> assign(:engine_pid, engine_pid)
      |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
+  end
+
+  ### Used to generate z index between 1 and 50
+  defp calculate_z_index("") do
+    50
+  end
+
+  defp calculate_z_index(uuid) do
+    uuid
+    |> binary_part(0, 2)
+    |> :binary.decode_unsigned()
+    |> rem(50)
   end
 end

@@ -55,7 +55,10 @@ defmodule Flappy.MixProject do
       {:styler, "~> 1.0.0-rc.1", only: [:dev, :test], runtime: false},
       {:elixir_uuid, "~> 1.2"},
       {:graphmath, "~> 2.6"},
-      {:html_sanitize_ex, "~> 1.4"}
+      {:html_sanitize_ex, "~> 1.4"},
+      {:ecto, "~> 3.10"},
+      {:postgrex, "~> 0.19.1"},
+      {:ecto_sql, "~> 3.12"}
     ]
   end
 
