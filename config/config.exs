@@ -17,14 +17,6 @@ config :esbuild,
 
 config :flappy, Flappy.Mailer, adapter: Swoosh.Adapters.Local
 
-config :flappy, Flappy.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "flappy_repo",
-  stacktrace: true,
-  pool_size: 10
-
 config :flappy, FlappyWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
