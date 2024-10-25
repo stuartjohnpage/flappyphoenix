@@ -73,7 +73,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
-      <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
+      <div id="game-area" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}

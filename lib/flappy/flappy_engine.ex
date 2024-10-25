@@ -26,7 +26,7 @@ defmodule Flappy.FlappyEngine do
   alias Flappy.PowerUp
 
   # TIME VARIABLES
-  @game_tick_interval 30
+  @game_tick_interval 15
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
@@ -182,7 +182,8 @@ defmodule Flappy.FlappyEngine do
         %{
           game_id: game_id,
           game_height: game_height,
-          player: %{sprite: %{size: {_player_length, player_height}}} = player
+          game_width: game_width,
+          player: %{sprite: %{size: {player_length, player_height}}} = player
         } = state
       ) do
     state =
@@ -219,7 +220,7 @@ defmodule Flappy.FlappyEngine do
       y_pos > 100 - get_percentage(game_height, player_height) ->
         calculate_score_and_update_view(state)
 
-      x_pos < 0 ->
+      x_pos < 0 - get_percentage(game_width, player_length) ->
         calculate_score_and_update_view(state)
 
       x_pos > 100 ->
@@ -394,11 +395,11 @@ defmodule Flappy.FlappyEngine do
   end
 
   defp generate_power_up(state) do
-    max_generation_width = round(state.game_width)
+    half_generation_width = round(state.game_width / 2)
 
     [
       %PowerUp{
-        position: {Enum.random(0..max_generation_width), 0, 0, 0},
+        position: {Enum.random(0..half_generation_width), 0, 0, 0},
         velocity: {0, Enum.random(100..150)},
         sprite: Enum.random(@power_up_sprites),
         id: UUID.uuid4()
