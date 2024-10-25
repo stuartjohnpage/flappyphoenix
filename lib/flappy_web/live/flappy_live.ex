@@ -81,7 +81,6 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
         >
-          <%= inspect(@game_state.player.invisibility) %>
           <img
             src={@game_state.player.sprite.image}
             class={
