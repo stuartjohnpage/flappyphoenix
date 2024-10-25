@@ -15,6 +15,8 @@
 //     import "some-package"
 //
 
+import Hooks from "./hooks";
+
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html"
 // Establish Phoenix Socket and LiveView configuration.
@@ -24,6 +26,7 @@ import topbar from "../vendor/topbar"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: Hooks,
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken, viewport_height: window.innerHeight, viewport_width: window.innerWidth, zoom_level: window.devicePixelRatio},
 })

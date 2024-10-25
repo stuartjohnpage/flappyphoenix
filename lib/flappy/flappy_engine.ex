@@ -94,7 +94,7 @@ defmodule Flappy.FlappyEngine do
       zoom_level: zoom_level,
       player: %{
         player
-        | position: {0, game_height / 2, 0, game_height / 2},
+        | position: {100, game_height / 2, 10, 50},
           velocity: {0, 0},
           sprite: List.first(@player_sprites),
           granted_powers: []
@@ -163,15 +163,27 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
+  def handle_cast({:update_zoom, zoom_level}, state) do
+    {:noreply, %{state | zoom_level: zoom_level}}
+  end
+
   @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
 
+  defp get_percentage(whole, part) do
+    part / whole * 100
+  end
+
   @impl true
   def handle_info(
         :game_tick,
-        %{game_id: game_id, player: %{sprite: %{size: {player_length, player_height}}} = player} = state
+        %{
+          game_id: game_id,
+          game_height: game_height,
+          player: %{sprite: %{size: {_player_length, player_height}}} = player
+        } = state
       ) do
     state =
       state
@@ -180,7 +192,7 @@ defmodule Flappy.FlappyEngine do
       |> update_power_ups()
       |> update_explosions()
 
-    {x_pos, y_pos, _, _} = player.position
+    {_x_pos, _y_pos, x_pos, y_pos} = player.position
 
     collision? =
       Hitbox.check_for_enemy_collisions?(state)
@@ -204,13 +216,13 @@ defmodule Flappy.FlappyEngine do
       y_pos < 0 ->
         calculate_score_and_update_view(state)
 
-      y_pos > state.game_height - player_height ->
+      y_pos > 100 - get_percentage(game_height, player_height) ->
         calculate_score_and_update_view(state)
 
       x_pos < 0 ->
         calculate_score_and_update_view(state)
 
-      x_pos > state.game_width - player_length ->
+      x_pos > 100 ->
         calculate_score_and_update_view(state)
 
       true ->
@@ -518,6 +530,10 @@ defmodule Flappy.FlappyEngine do
 
   def fire_laser(pid) do
     GenServer.cast(pid, :fire_laser)
+  end
+
+  def update_zoom(pid, zoom_level) do
+    GenServer.cast(pid, {:update_zoom, zoom_level})
   end
 
   def get_game_version do

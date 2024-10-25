@@ -51,7 +51,7 @@ defmodule FlappyWeb.FlappyLive do
           </.button>
         </.simple_form>
       </div>
-
+      <%!-- Score container --%>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
@@ -73,7 +73,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
-      <div id="game-area" class="game-area w-screen h-screen -z-0">
+      <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}
@@ -130,7 +130,6 @@ defmodule FlappyWeb.FlappyLive do
           </div>
         <% end %>
       </div>
-
       <div
         :if={@game_started && !@game_state.game_over && @is_mobile}
         class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
@@ -193,9 +192,9 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def mount(_params, _session, socket) do
-    game_height = get_connect_params(socket)["viewport_height"] || 0
-    game_width = get_connect_params(socket)["viewport_width"] || 0
-    zoom_level = get_connect_params(socket)["zoom_level"] || 0
+    game_height = get_connect_params(socket)["viewport_height"] || 760
+    game_width = get_connect_params(socket)["viewport_width"] || 1440
+    zoom_level = get_connect_params(socket)["zoom_level"] || 2
     is_mobile = game_width <= 450
     name_form = to_form(%{})
 
@@ -214,10 +213,6 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:current_high_scores, [])
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
-  end
-
-  def handle_event("set_game_height", %{"height" => height}, socket) do
-    {:noreply, assign(socket, game_height: height)}
   end
 
   def handle_event(
@@ -285,6 +280,26 @@ defmodule FlappyWeb.FlappyLive do
     else
       {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
     end
+  end
+
+  def handle_event(
+        "resize",
+        %{"height" => game_height, "width" => game_width, "zoom" => zoom_level},
+        %{assigns: %{engine_pid: engine_pid}} = socket
+      ) do
+    IO.inspect(zoom_level)
+    IO.inspect(game_height)
+    IO.inspect(game_width)
+
+    if Process.alive?(engine_pid) do
+      FlappyEngine.update_zoom(engine_pid, zoom_level)
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("resize", _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
