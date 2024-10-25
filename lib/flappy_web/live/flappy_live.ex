@@ -195,6 +195,7 @@ defmodule FlappyWeb.FlappyLive do
   def mount(_params, _session, socket) do
     game_height = get_connect_params(socket)["viewport_height"] || 0
     game_width = get_connect_params(socket)["viewport_width"] || 0
+    zoom_level = get_connect_params(socket)["zoom_level"] || 0
     is_mobile = game_width <= 450
     name_form = to_form(%{})
 
@@ -206,6 +207,7 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
+     |> assign(:zoom_level, zoom_level)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
@@ -221,9 +223,10 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event(
         "play_again",
         _,
-        %{assigns: %{game_height: game_height, game_width: game_width, player_name: player_name}} = socket
+        %{assigns: %{game_height: game_height, game_width: game_width, player_name: player_name, zoom_level: zoom_level}} =
+          socket
       ) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name, zoom_level)
 
     %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
@@ -368,9 +371,11 @@ defmodule FlappyWeb.FlappyLive do
      |> put_flash(:score, message_to_display)}
   end
 
-  defp start_game(player_name, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
-
+  defp start_game(
+         player_name,
+         %{assigns: %{game_height: game_height, game_width: game_width, zoom_level: zoom_level}} = socket
+       ) do
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name, zoom_level)
     %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do

@@ -30,7 +30,7 @@ defmodule Flappy.FlappyEngine do
   @score_tick_interval 1000
 
   ### VELOCITY VARIABLES
-  @gravity 250
+  @gravity 175
   @thrust -100
   @start_score 0
 
@@ -61,6 +61,7 @@ defmodule Flappy.FlappyEngine do
             game_over: false,
             game_height: 0,
             game_width: 0,
+            zoom_level: 1,
             gravity: 0,
             laser_allowed: false,
             laser_beam: false,
@@ -71,8 +72,14 @@ defmodule Flappy.FlappyEngine do
             explosions: [%Explosion{}]
 
   @impl true
-  def init(%{game_height: game_height, game_width: game_width, game_id: game_id, player_name: player_name}) do
-    gravity = @gravity / game_height * 500
+  def init(%{
+        game_height: game_height,
+        game_width: game_width,
+        game_id: game_id,
+        player_name: player_name,
+        zoom_level: zoom_level
+      }) do
+    gravity = @gravity / zoom_level
     max_generation_height = round(game_height - game_height / 4)
     player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
     current_high_scores = Players.get_current_high_scores()
@@ -84,6 +91,7 @@ defmodule Flappy.FlappyEngine do
       game_height: game_height,
       game_width: game_width,
       gravity: gravity,
+      zoom_level: zoom_level,
       player: %{
         player
         | position: {0, game_height / 2, 0, game_height / 2},
@@ -117,31 +125,31 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_cast(:go_up, %{player: player} = state) do
+  def handle_cast(:go_up, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
-    new_velocity = y_velocity + @thrust
+    new_velocity = y_velocity + @thrust / zoom_level
     player = %{player | velocity: {x_velocity, new_velocity}}
     {:noreply, %{state | player: player}}
   end
 
-  def handle_cast(:go_down, %{player: player} = state) do
+  def handle_cast(:go_down, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
-    new_velocity = y_velocity - @thrust
+    new_velocity = y_velocity - @thrust / zoom_level
     player = %{player | velocity: {x_velocity, new_velocity}}
     {:noreply, %{state | player: player}}
   end
 
-  def handle_cast(:go_right, %{player: player} = state) do
+  def handle_cast(:go_right, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
-    new_velocity = x_velocity - @thrust
+    new_velocity = x_velocity - @thrust / zoom_level
 
     player = %{player | velocity: {new_velocity, y_velocity}}
     {:noreply, %{state | player: player}}
   end
 
-  def handle_cast(:go_left, %{player: player} = state) do
+  def handle_cast(:go_left, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
-    new_velocity = x_velocity + @thrust
+    new_velocity = x_velocity + @thrust / zoom_level
 
     player = %{player | velocity: {new_velocity, y_velocity}}
     {:noreply, %{state | player: player}}
@@ -400,7 +408,7 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  defp generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width}) do
+  defp generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width, zoom_level: zoom_level}) do
     max_generation_height = game_height
     enemy_sprite = Enum.random(@enemy_sprites)
     {_enemy_width, enemy_height} = enemy_sprite.size
@@ -408,7 +416,7 @@ defmodule Flappy.FlappyEngine do
     [
       %Enemy{
         position: {game_width, Enum.random(0..(max_generation_height - enemy_height)), 100, Enum.random(0..100)},
-        velocity: {Enum.random(-100..-50), 0},
+        velocity: {Enum.random(-100..-50) / zoom_level, 0},
         sprite: enemy_sprite,
         id: UUID.uuid4()
       }
@@ -471,14 +479,15 @@ defmodule Flappy.FlappyEngine do
   end
 
   ### PUBLIC API
-  def start_engine(game_height, game_width, player_name) do
+  def start_engine(game_height, game_width, player_name, zoom_level) do
     game_id = UUID.uuid4()
 
     GenServer.start_link(__MODULE__, %{
       game_height: game_height,
       game_width: game_width,
       game_id: game_id,
-      player_name: player_name
+      player_name: player_name,
+      zoom_level: zoom_level
     })
   end
 
