@@ -5,13 +5,15 @@ defmodule Flappy.PowerUp do
   The position is a tuple of x and y coordinates, and the velocity is a tuple of x and y velocities.
   """
   alias Flappy.Explosion
+  alias Flappy.Players
   alias Flappy.Position
 
   defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: ""
 
   @power_up_sprites [
     %{image: "/images/laser.svg", size: {50, 50}, name: :laser},
-    %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb}
+    # %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb},
+    %{image: "/images/test_blue.svg", size: {50, 50}, name: :invisibility}
   ]
 
   def maybe_generate_power_up(%{power_ups: power_ups} = state) do
@@ -75,10 +77,20 @@ defmodule Flappy.PowerUp do
         end
       end)
 
-    laser_allowed =
-      Enum.any?(granted_powers, fn
-        {:laser, duration} when duration > 0 -> true
-        _ -> false
+    {laser_allowed?, invisibility?} =
+      Enum.reduce(granted_powers, {false, false}, fn
+        {:laser, duration}, {_laser_allowed, invis} ->
+          if duration > 0,
+            do: {true, invis},
+            else: {false, invis}
+
+        {:invisibility, duration}, {laser_allowed, _invis} ->
+          if duration > 0,
+            do: {laser_allowed, true},
+            else: {laser_allowed, false}
+
+        {_invisibility, _laser_allowed}, _acc ->
+          {false, false}
       end)
 
     {bomb_hit?, explosions} =
@@ -98,12 +110,26 @@ defmodule Flappy.PowerUp do
         end
       end)
 
+    sprite =
+      if laser_allowed? do
+        Players.get_laser_sprite()
+      else
+        Players.get_default_sprite()
+      end
+
     {score, enemies} =
       if bomb_hit?,
         do: {player.score + length(state.enemies) * state.score_multiplier, []},
         else: {player.score, state.enemies}
 
-    player = %{player | granted_powers: granted_powers, laser_allowed: laser_allowed, score: score}
+    player = %{
+      player
+      | sprite: sprite,
+        granted_powers: granted_powers,
+        laser_allowed: laser_allowed?,
+        invisibility: invisibility?,
+        score: score
+    }
 
     %{
       state

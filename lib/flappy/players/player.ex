@@ -24,6 +24,7 @@ defmodule Flappy.Players.Player do
     field(:laser_allowed, :boolean, virtual: true)
     field(:laser_beam, :boolean, virtual: true)
     field(:laser_duration, :integer, virtual: true)
+    field(:invisibility, :boolean, virtual: true)
   end
 
   def changeset(player, params \\ %{}) do
@@ -31,6 +32,9 @@ defmodule Flappy.Players.Player do
     |> Changeset.cast(params, [:name, :score, :version])
     |> Changeset.force_change(:score, Map.get(params, :score))
     |> Changeset.validate_required([:name, :score, :version])
+  end
+
+  def laser_sprite do
   end
 
   def update_player(%{player: player, gravity: gravity, game_width: game_width, game_height: game_height} = state) do

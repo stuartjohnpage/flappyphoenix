@@ -37,12 +37,6 @@ defmodule Flappy.FlappyEngine do
   @score_multiplier 10
   @difficulty_score 500
 
-  @player_sprites [
-    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix},
-    %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :laser_phoenix},
-    %{image: "/images/test_blue.svg", size: {100, 100}, name: :test}
-  ]
-
   # Game state
   defstruct game_id: nil,
             current_high_scores: [],
@@ -89,11 +83,12 @@ defmodule Flappy.FlappyEngine do
         player
         | position: {100, game_height / 2, 10, 50},
           velocity: {0, 0},
-          sprite: List.first(@player_sprites),
+          sprite: Players.get_default_sprite(),
           granted_powers: [],
           laser_allowed: false,
           laser_beam: false,
-          laser_duration: 0
+          laser_duration: 0,
+          invisibility: false
       },
       enemies: [
         %Enemy{
@@ -125,6 +120,7 @@ defmodule Flappy.FlappyEngine do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity + @thrust / zoom_level
     player = %{player | velocity: {x_velocity, new_velocity}}
+
     {:noreply, %{state | player: player}}
   end
 
@@ -132,28 +128,30 @@ defmodule Flappy.FlappyEngine do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = y_velocity - @thrust / zoom_level
     player = %{player | velocity: {x_velocity, new_velocity}}
+
     {:noreply, %{state | player: player}}
   end
 
   def handle_cast(:go_right, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity - @thrust / zoom_level
-
     player = %{player | velocity: {new_velocity, y_velocity}}
+
     {:noreply, %{state | player: player}}
   end
 
   def handle_cast(:go_left, %{player: player, zoom_level: zoom_level} = state) do
     {x_velocity, y_velocity} = player.velocity
     new_velocity = x_velocity + @thrust / zoom_level
-
     player = %{player | velocity: {new_velocity, y_velocity}}
+
     {:noreply, %{state | player: player}}
   end
 
   def handle_cast(:fire_laser, %{player: player} = state) do
     if player.laser_allowed do
       player = %{player | laser_beam: true, laser_duration: 3}
+
       {:noreply, %{state | player: player}}
     else
       {:noreply, state}

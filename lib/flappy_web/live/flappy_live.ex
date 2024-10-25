@@ -81,15 +81,20 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
         >
+          <%= inspect(@game_state.player.invisibility) %>
           <img
-            src={
-              if @game_state.player.laser_allowed,
-                do: ~p"/images/laser_phoenix.svg",
-                else: @game_state.player.sprite.image
-            }
+            src={@game_state.player.sprite.image}
             class={
-              if @game_state.player.laser_allowed,
-                do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+              cond do
+                @game_state.player.laser_allowed ->
+                  "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+
+                @game_state.player.invisibility ->
+                  "filter drop-shadow-[0_0_10px_rgba(0,0,255,0.7)]"
+
+                true ->
+                  ""
+              end
             }
           />
         </div>
