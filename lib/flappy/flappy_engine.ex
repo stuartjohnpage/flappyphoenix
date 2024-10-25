@@ -86,7 +86,7 @@ defmodule Flappy.FlappyEngine do
       gravity: gravity,
       player: %{
         player
-        | position: {0, game_height / 2, 0, game_height / 2},
+        | position: {100, game_height / 2, 10, 50},
           velocity: {0, 0},
           sprite: List.first(@player_sprites),
           granted_powers: []
@@ -160,10 +160,14 @@ defmodule Flappy.FlappyEngine do
     {:reply, state, state}
   end
 
+  defp get_percentage(whole, part) do
+    part / whole * 100
+  end
+
   @impl true
   def handle_info(
         :game_tick,
-        %{game_id: game_id, player: %{sprite: %{size: {player_length, player_height}}} = player} = state
+        %{game_id: game_id, game_height: game_height, player: %{sprite: %{size: {_player_length, player_height}}} = player} = state
       ) do
     state =
       state
@@ -172,7 +176,7 @@ defmodule Flappy.FlappyEngine do
       |> update_power_ups()
       |> update_explosions()
 
-    {x_pos, y_pos, _, _} = player.position
+    {_x_pos, _y_pos, x_pos, y_pos} = player.position
 
     collision? =
       Hitbox.check_for_enemy_collisions?(state)
@@ -196,13 +200,13 @@ defmodule Flappy.FlappyEngine do
       y_pos < 0 ->
         calculate_score_and_update_view(state)
 
-      y_pos > state.game_height - player_height ->
+      y_pos > 100 - get_percentage(game_height, player_height) ->
         calculate_score_and_update_view(state)
 
       x_pos < 0 ->
         calculate_score_and_update_view(state)
 
-      x_pos > state.game_width - player_length ->
+      x_pos > 100 ->
         calculate_score_and_update_view(state)
 
       true ->

@@ -12,7 +12,7 @@ defmodule FlappyWeb.FlappyLive do
     <div>
       <%!-- Game start container --%>
       <div
-        :if={!@game_state.game_over && !@game_started}
+        :if={!@game_state.game_over && !@game_started && @zoom_level_acceptable?}
         class="flex flex-col items-center justify-center h-screen"
       >
         <p class="text-white text-4xl my-11">Get ready to play Flappy Phoenix!</p>
@@ -51,8 +51,8 @@ defmodule FlappyWeb.FlappyLive do
           </.button>
         </.simple_form>
       </div>
-
-      <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
+      <%!-- Score container --%>
+      <div :if={@game_state.game_over  && @zoom_level_acceptable? } class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
@@ -73,7 +73,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
-      <div id="game-area" class="game-area w-screen h-screen -z-0">
+      <div id="game-area" phx-hook="ResizeHook" :if={@zoom_level_acceptable?} class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}
@@ -129,6 +129,9 @@ defmodule FlappyWeb.FlappyLive do
             <img src={explosion.sprite.image} />
           </div>
         <% end %>
+      </div>
+      <div :if={!@zoom_level_acceptable?} class="fixed inset-0 flex items-center justify-center">
+        <h1 class="text-white text-6xl font-bold text-center px-4">Please zoom to an acceptable level and refresh the page!</h1>
       </div>
 
       <div
@@ -193,8 +196,11 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def mount(_params, _session, socket) do
-    game_height = get_connect_params(socket)["viewport_height"] || 0
-    game_width = get_connect_params(socket)["viewport_width"] || 0
+    game_height = get_connect_params(socket)["viewport_height"] || 760
+    game_width = get_connect_params(socket)["viewport_width"] || 1440
+    zoom_level = get_connect_params(socket)["zoom_level"] || 2
+
+    zoom_level_acceptable? = is_zoom_level_acceptable(game_width, game_height, zoom_level)
     is_mobile = game_width <= 450
     name_form = to_form(%{})
 
@@ -203,6 +209,7 @@ defmodule FlappyWeb.FlappyLive do
     {:ok,
      socket
      |> assign(:messages, [])
+     |> assign(:zoom_level_acceptable?, zoom_level_acceptable?)
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
@@ -212,10 +219,6 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:current_high_scores, [])
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
-  end
-
-  def handle_event("set_game_height", %{"height" => height}, socket) do
-    {:noreply, assign(socket, game_height: height)}
   end
 
   def handle_event(
@@ -253,6 +256,7 @@ defmodule FlappyWeb.FlappyLive do
         %{"key" => key},
         %{assigns: %{engine_pid: engine_pid, game_state: %{game_over: false}}} = socket
       ) do
+
     action =
       case String.downcase(key) do
         key when key in ["arrowup", "w"] -> &FlappyEngine.go_up/1
@@ -282,6 +286,18 @@ defmodule FlappyWeb.FlappyLive do
     else
       {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
     end
+  end
+
+  def handle_event("resize", %{"height" => game_height, "width" => game_width, "zoom" => zoom_level}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+    zoom_level_acceptable? = is_zoom_level_acceptable(game_width, game_height, zoom_level)
+    if not zoom_level_acceptable? && Process.alive?(engine_pid), do: FlappyEngine.stop_engine(engine_pid)
+
+    {:noreply, assign(socket, :zoom_level_acceptable?, zoom_level_acceptable?)}
+  end
+
+  def handle_event("resize", %{"height" => game_height, "width" => game_width, "zoom" => zoom_level}, socket) do
+    zoom_level_acceptable? = is_zoom_level_acceptable(game_width, game_height, zoom_level)
+    {:noreply, assign(socket, :zoom_level_acceptable?, zoom_level_acceptable?)}
   end
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
@@ -396,5 +412,29 @@ defmodule FlappyWeb.FlappyLive do
     |> binary_part(0, 2)
     |> :binary.decode_unsigned()
     |> rem(50)
+  end
+
+  defp is_zoom_level_acceptable(game_width, game_height, zoom_level) do
+    IO.inspect(game_width, label: :game_width)
+    IO.inspect(game_height, label: :game_height)
+    IO.inspect(zoom_level, label: :zoom_level)
+    # Reference values (from your MacBook Pro setup)
+    reference_height = 760
+    reference_width = 1440
+    reference_zoom = 2
+
+    reference_ratio = reference_width / reference_height * reference_zoom
+    # User's current area per zoom level
+
+    game_ratio = game_width / game_height * zoom_level
+    # Calculate deviation from the reference
+    deviation = reference_ratio - game_ratio
+    # # Set a tolerance, e.g., 20% deviation is allowed
+    tolerance = 20
+
+    IO.inspect(deviation)
+
+    answer = deviation < 1
+    IO.inspect(answer, label: :return)
   end
 end
