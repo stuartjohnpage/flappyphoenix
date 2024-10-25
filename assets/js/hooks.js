@@ -8,8 +8,6 @@ Hooks.ResizeHook = {
       const viewportWidth = window.innerWidth;
       const zoomLevel = window.devicePixelRatio
 
-      console.log(zoomLevel)
-
       // Push new values to LiveView
       this.pushEvent("resize", {
         height: viewportHeight,
