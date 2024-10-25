@@ -24,6 +24,10 @@ defmodule Flappy.Hitbox do
   end
 
   # Note: at this point, we are working with percentage positions here
+  def check_for_enemy_collisions?(%{player: %{invisibility: true}}) do
+    false
+  end
+
   def check_for_enemy_collisions?(
         %{player: %{sprite: %{size: player_size}, position: player_position}, enemies: enemies} = state
       ) do

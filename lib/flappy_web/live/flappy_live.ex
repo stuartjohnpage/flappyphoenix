@@ -51,7 +51,7 @@ defmodule FlappyWeb.FlappyLive do
           </.button>
         </.simple_form>
       </div>
-
+      <%!-- Score container --%>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
         <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
@@ -73,7 +73,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
-      <div id="game-area" class="game-area w-screen h-screen -z-0">
+      <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}
@@ -82,19 +82,24 @@ defmodule FlappyWeb.FlappyLive do
           style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
         >
           <img
-            src={
-              if @game_state.laser_allowed,
-                do: ~p"/images/laser_phoenix.svg",
-                else: @game_state.player.sprite.image
-            }
+            src={@game_state.player.sprite.image}
             class={
-              if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+              cond do
+                @game_state.player.laser_allowed ->
+                  "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+
+                @game_state.player.invisibility ->
+                  "filter drop-shadow-[0_0_10px_rgba(0,0,255,0.7)]"
+
+                true ->
+                  ""
+              end
             }
           />
         </div>
 
         <div
-          :if={@game_state.laser_beam && !@game_state.game_over}
+          :if={@game_state.player.laser_beam && !@game_state.game_over}
           id="laser-beam"
           class="absolute bg-red-900 h-1 rounded-md"
           style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}
@@ -130,7 +135,6 @@ defmodule FlappyWeb.FlappyLive do
           </div>
         <% end %>
       </div>
-
       <div
         :if={@game_started && !@game_state.game_over && @is_mobile}
         class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
@@ -193,8 +197,9 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def mount(_params, _session, socket) do
-    game_height = get_connect_params(socket)["viewport_height"] || 0
-    game_width = get_connect_params(socket)["viewport_width"] || 0
+    game_height = get_connect_params(socket)["viewport_height"] || 760
+    game_width = get_connect_params(socket)["viewport_width"] || 1440
+    zoom_level = get_connect_params(socket)["zoom_level"] || 2
     is_mobile = game_width <= 450
     name_form = to_form(%{})
 
@@ -206,24 +211,23 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
      |> assign(:is_mobile, is_mobile)
+     |> assign(:zoom_level, zoom_level)
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
+     |> assign(:engine_pid, nil)
      |> assign(:current_high_scores, [])
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
   end
 
-  def handle_event("set_game_height", %{"height" => height}, socket) do
-    {:noreply, assign(socket, game_height: height)}
-  end
-
   def handle_event(
         "play_again",
         _,
-        %{assigns: %{game_height: game_height, game_width: game_width, player_name: player_name}} = socket
+        %{assigns: %{game_height: game_height, game_width: game_width, player_name: player_name, zoom_level: zoom_level}} =
+          socket
       ) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name, zoom_level)
 
     %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
@@ -281,6 +285,19 @@ defmodule FlappyWeb.FlappyLive do
       |> start_game(socket)
     else
       {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
+    end
+  end
+
+  def handle_event(
+        "resize",
+        %{"height" => game_height, "width" => game_width, "zoom" => zoom_level},
+        %{assigns: assigns} = socket
+      ) do
+    if is_nil(assigns.engine_pid) do
+      {:noreply, assign(socket, game_width: game_width, game_height: game_height, zoom_level: zoom_level)}
+    else
+      FlappyEngine.update_viewport(assigns.engine_pid, zoom_level, game_width, game_height)
+      {:noreply, assign(socket, game_width: game_width, game_height: game_height, zoom_level: zoom_level)}
     end
   end
 
@@ -368,9 +385,11 @@ defmodule FlappyWeb.FlappyLive do
      |> put_flash(:score, message_to_display)}
   end
 
-  defp start_game(player_name, %{assigns: %{game_height: game_height, game_width: game_width}} = socket) do
-    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name)
-
+  defp start_game(
+         player_name,
+         %{assigns: %{game_height: game_height, game_width: game_width, zoom_level: zoom_level}} = socket
+       ) do
+    {:ok, engine_pid} = FlappyEngine.start_engine(game_height, game_width, player_name, zoom_level)
     %{game_id: game_id, current_high_scores: current_high_scores} = game_state = FlappyEngine.get_game_state(engine_pid)
 
     if connected?(socket) do
