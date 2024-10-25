@@ -27,4 +27,16 @@ defmodule Flappy.Players do
     |> limit(5)
     |> Repo.all()
   end
+
+  def get_default_sprite do
+    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix}
+  end
+
+  def get_laser_sprite do
+    %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :laser_phoenix}
+  end
+
+  def get_test_sprite do
+    %{image: "/images/test_blue.svg", size: {100, 100}, name: :test}
+  end
 end
