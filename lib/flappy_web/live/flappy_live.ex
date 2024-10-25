@@ -83,18 +83,19 @@ defmodule FlappyWeb.FlappyLive do
         >
           <img
             src={
-              if @game_state.laser_allowed,
+              if @game_state.player.laser_allowed,
                 do: ~p"/images/laser_phoenix.svg",
                 else: @game_state.player.sprite.image
             }
             class={
-              if @game_state.laser_allowed, do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
+              if @game_state.player.laser_allowed,
+                do: "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
             }
           />
         </div>
 
         <div
-          :if={@game_state.laser_beam && !@game_state.game_over}
+          :if={@game_state.player.laser_beam && !@game_state.game_over}
           id="laser-beam"
           class="absolute bg-red-900 h-1 rounded-md"
           style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}

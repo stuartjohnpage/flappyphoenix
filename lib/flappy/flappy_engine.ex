@@ -63,9 +63,6 @@ defmodule Flappy.FlappyEngine do
             game_width: 0,
             zoom_level: 1,
             gravity: 0,
-            laser_allowed: false,
-            laser_beam: false,
-            laser_duration: 0,
             enemies: [%Enemy{}],
             power_ups: [%PowerUp{}],
             player: %Player{},
@@ -97,7 +94,10 @@ defmodule Flappy.FlappyEngine do
         | position: {100, game_height / 2, 10, 50},
           velocity: {0, 0},
           sprite: List.first(@player_sprites),
-          granted_powers: []
+          granted_powers: [],
+          laser_allowed: false,
+          laser_beam: false,
+          laser_duration: 0
       },
       enemies: [
         %Enemy{
@@ -155,9 +155,10 @@ defmodule Flappy.FlappyEngine do
     {:noreply, %{state | player: player}}
   end
 
-  def handle_cast(:fire_laser, state) do
-    if state.laser_allowed do
-      {:noreply, %{state | laser_beam: true, laser_duration: 3}}
+  def handle_cast(:fire_laser, %{player: player} = state) do
+    if player.laser_allowed do
+      player = %{player | laser_beam: true, laser_duration: 3}
+      {:noreply, %{state | player: player}}
     else
       {:noreply, state}
     end
@@ -170,10 +171,6 @@ defmodule Flappy.FlappyEngine do
   @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
-  end
-
-  defp get_percentage(whole, part) do
-    part / whole * 100
   end
 
   @impl true
@@ -199,7 +196,7 @@ defmodule Flappy.FlappyEngine do
       Hitbox.check_for_enemy_collisions?(state)
 
     enemies_hit_by_beam =
-      if state.laser_beam,
+      if state.player.laser_beam,
         do: Hitbox.get_hit_enemies(state.enemies, state),
         else: []
 
@@ -253,37 +250,29 @@ defmodule Flappy.FlappyEngine do
 
   ### UPDATE FUNCTIONS
 
-  defp update_player(
-         %{
-           player: player,
-           gravity: gravity,
-           game_width: game_width,
-           game_height: game_height,
-           laser_duration: laser_duration
-         } = state
-       ) do
+  defp update_player(%{player: player, gravity: gravity, game_width: game_width, game_height: game_height} = state) do
     {x_position, y_position, _x_percent, _y_percent} = player.position
     {x_velocity, y_velocity} = player.velocity
 
     new_y_velocity = y_velocity + gravity * (@game_tick_interval / 1000)
     new_y_position = y_position + new_y_velocity * (@game_tick_interval / 1000)
     new_x_position = x_position + x_velocity * (@game_tick_interval / 1000)
-    laser_on? = laser_duration > 0
-    laser_duration = if laser_on?, do: laser_duration - 1, else: 0
+    laser_on? = player.laser_duration > 0
+    laser_duration = if laser_on?, do: player.laser_duration - 1, else: 0
 
     {x_percent, y_percent} = Position.get_percentage_position({new_x_position, new_y_position}, game_width, game_height)
 
     player = %{
       player
       | position: {new_x_position, new_y_position, x_percent, y_percent},
-        velocity: {x_velocity, new_y_velocity}
+        velocity: {x_velocity, new_y_velocity},
+        laser_beam: laser_on?,
+        laser_duration: laser_duration
     }
 
     %{
       state
-      | player: player,
-        laser_beam: laser_on?,
-        laser_duration: laser_duration
+      | player: player
     }
   end
 
@@ -371,13 +360,12 @@ defmodule Flappy.FlappyEngine do
         do: {player.score + length(state.enemies) * @score_multiplier, []},
         else: {player.score, state.enemies}
 
-    player = %{player | granted_powers: granted_powers, score: score}
+    player = %{player | granted_powers: granted_powers, laser_allowed: laser_allowed, score: score}
 
     %{
       state
       | power_ups: power_ups,
         player: player,
-        laser_allowed: laser_allowed,
         enemies: enemies,
         explosions: explosions
     }
@@ -450,7 +438,7 @@ defmodule Flappy.FlappyEngine do
     %{state | explosions: explosions}
   end
 
-  def remove_hit_enemies(%{player: player} = state, enemies_hit) do
+  defp remove_hit_enemies(%{player: player} = state, enemies_hit) do
     hit_ids = MapSet.new(enemies_hit, & &1.id)
 
     {enemies, new_explosions} =
@@ -491,6 +479,10 @@ defmodule Flappy.FlappyEngine do
     {:noreply, state}
   end
 
+  defp get_percentage(whole, part) do
+    part / whole * 100
+  end
+
   ### PUBLIC API
   def start_engine(game_height, game_width, player_name, zoom_level) do
     game_id = UUID.uuid4()
@@ -504,7 +496,6 @@ defmodule Flappy.FlappyEngine do
     })
   end
 
-  @spec stop_engine(atom() | pid() | {atom(), any()} | {:via, atom(), any()}) :: :ok
   def stop_engine(pid) do
     GenServer.stop(pid)
   end
