@@ -163,8 +163,8 @@ defmodule Flappy.FlappyEngine do
     end
   end
 
-  def handle_cast({:update_zoom, zoom_level}, state) do
-    {:noreply, %{state | zoom_level: zoom_level}}
+  def handle_cast({:update_viewport, zoom_level, game_width, game_height}, state) do
+    {:noreply, %{state | zoom_level: zoom_level, game_width: game_width, game_height: game_height}}
   end
 
   @impl true
@@ -533,8 +533,8 @@ defmodule Flappy.FlappyEngine do
     GenServer.cast(pid, :fire_laser)
   end
 
-  def update_zoom(pid, zoom_level) do
-    GenServer.cast(pid, {:update_zoom, zoom_level})
+  def update_viewport(pid, zoom_level, game_width, game_height) do
+    GenServer.cast(pid, {:update_viewport, zoom_level, game_width, game_height})
   end
 
   def get_game_version do

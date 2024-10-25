@@ -73,7 +73,7 @@ defmodule FlappyWeb.FlappyLive do
         <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
       </div>
       <%!-- Game Area --%>
-      <div id="game-area" class="game-area w-screen h-screen -z-0">
+      <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
         <div
           :if={@game_started && !@game_state.game_over}
@@ -210,6 +210,7 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_height, game_height)
      |> assign(:game_width, game_width)
      |> assign(:game_started, false)
+     |> assign(:engine_pid, nil)
      |> assign(:current_high_scores, [])
      |> assign(:game_state, %FlappyEngine{})
      |> assign(:game_height, game_height)}
@@ -285,21 +286,14 @@ defmodule FlappyWeb.FlappyLive do
   def handle_event(
         "resize",
         %{"height" => game_height, "width" => game_width, "zoom" => zoom_level},
-        %{assigns: %{engine_pid: engine_pid}} = socket
+        %{assigns: assigns} = socket
       ) do
-    IO.inspect(zoom_level)
-    IO.inspect(game_height)
-    IO.inspect(game_width)
-
-    if Process.alive?(engine_pid) do
-      FlappyEngine.update_zoom(engine_pid, zoom_level)
+    if is_nil(assigns.engine_pid) do
+      {:noreply, assign(socket, game_width: game_width, game_height: game_height, zoom_level: zoom_level)}
+    else
+      FlappyEngine.update_viewport(assigns.engine_pid, zoom_level, game_width, game_height)
+      {:noreply, assign(socket, game_width: game_width, game_height: game_height, zoom_level: zoom_level)}
     end
-
-    {:noreply, socket}
-  end
-
-  def handle_event("resize", _params, socket) do
-    {:noreply, socket}
   end
 
   def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
