@@ -401,13 +401,15 @@ defmodule Flappy.FlappyEngine do
   end
 
   defp generate_enemy(%{enemies: enemies, game_height: game_height, game_width: game_width}) do
-    max_generation_height = round(game_height - game_height / 4)
+    max_generation_height = game_height
+    enemy_sprite = Enum.random(@enemy_sprites)
+    {_enemy_width, enemy_height} = enemy_sprite.size
 
     [
       %Enemy{
-        position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
+        position: {game_width, Enum.random(0..(max_generation_height - enemy_height)), 100, Enum.random(0..100)},
         velocity: {Enum.random(-100..-50), 0},
-        sprite: Enum.random(@enemy_sprites),
+        sprite: enemy_sprite,
         id: UUID.uuid4()
       }
       | enemies
