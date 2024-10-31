@@ -12,8 +12,8 @@ defmodule Flappy.PowerUp do
 
   @power_up_sprites [
     %{image: "/images/laser.svg", size: {50, 50}, name: :laser},
+    %{image: "/images/react.svg", size: {50, 50}, name: :invisibility},
     %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb},
-    %{image: "/images/react.svg", size: {50, 50}, name: :invisibility}
   ]
 
   def maybe_generate_power_up(%{power_ups: power_ups} = state) do
