@@ -43,22 +43,27 @@ defmodule Flappy.Hitbox do
   end
 
   defp detect_multiple_hits(multiple_entities, single_hitbox, game_state) do
-    Enum.filter(multiple_entities, fn entity ->
-      {_, _, entity_x, entity_y} = entity.position
-      {width, height} = entity.sprite.size
-      name = entity.sprite.name
+    multiple_entities
+    |> Enum.map(fn entity ->
+      Task.async(fn ->
+        {_, _, entity_x, entity_y} = entity.position
+        {width, height} = entity.sprite.size
+        name = entity.sprite.name
 
-      entity_hitbox =
-        entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
+        entity_hitbox =
+          entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
 
-      ### Broad phase
-      if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
-        ### Narrow phase
-        Polygons.Detection.collision?(single_hitbox, entity_hitbox)
-      else
-        false
-      end
+        # Broad phase
+        if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
+          # Narrow phase
+          if Polygons.Detection.collision?(single_hitbox, entity_hitbox), do: entity, else: nil
+        else
+          nil
+        end
+      end)
     end)
+    |> Enum.map(&Task.await/1)
+    |> Enum.filter(& &1) # Keep only entities (non-nil results)
   end
 
   defp player_hitbox(x, y, width, height, game_width, game_height) do
