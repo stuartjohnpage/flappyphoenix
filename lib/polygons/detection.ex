@@ -2,7 +2,7 @@ defmodule Polygons.Detection do
   @moduledoc """
   Detects collisions between polygons using the separating
   axis theorem.  Has two variants, :fast and :accurate.  :fast
-  will miss a few rare tyes of collisions but is much faster.
+  will miss a few rare types of collisions but is much faster.
   """
 
   alias Graphmath.Vec2
