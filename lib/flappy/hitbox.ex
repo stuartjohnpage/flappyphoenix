@@ -23,11 +23,6 @@ defmodule Flappy.Hitbox do
     detect_multiple_hits(power_ups, player_hitbox, state)
   end
 
-  # Note: at this point, we are working with percentage positions here
-  def check_for_enemy_collisions?(%{player: %{invisibility: true}}) do
-    false
-  end
-
   def check_for_enemy_collisions?(
         %{player: %{sprite: %{size: player_size}, position: player_position}, enemies: enemies} = state
       ) do
@@ -37,33 +32,27 @@ defmodule Flappy.Hitbox do
     player_hitbox =
       player_hitbox(player_x, player_y, player_length, player_height, state.game_width, state.game_height)
 
-    enemies
-    |> detect_multiple_hits(player_hitbox, state)
-    |> Enum.any?()
+    detect_multiple_hits(enemies, player_hitbox, state)
   end
 
   defp detect_multiple_hits(multiple_entities, single_hitbox, game_state) do
     multiple_entities
     |> Enum.map(fn entity ->
-      Task.async(fn ->
-        {_, _, entity_x, entity_y} = entity.position
-        {width, height} = entity.sprite.size
-        name = entity.sprite.name
+      {_, _, entity_x, entity_y} = entity.position
+      {width, height} = entity.sprite.size
+      name = entity.sprite.name
 
-        entity_hitbox =
-          entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
+      entity_hitbox =
+        entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
 
-        # Broad phase
-        if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
-          # Narrow phase
-          if Polygons.Detection.collision?(single_hitbox, entity_hitbox), do: entity, else: nil
-        else
-          nil
-        end
-      end)
+      if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
+        if Polygons.Detection.collision?(single_hitbox, entity_hitbox), do: entity
+      end
     end)
-    |> Enum.map(&Task.await/1)
-    |> Enum.filter(& &1) # Keep only entities (non-nil results)
+    |> Enum.filter(& &1)
+
+    # Broad phase
+    # Narrow phase
   end
 
   defp player_hitbox(x, y, width, height, game_width, game_height) do
