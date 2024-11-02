@@ -24,7 +24,7 @@ defmodule Flappy.Players.Player do
     field(:laser_allowed, :boolean, virtual: true)
     field(:laser_beam, :boolean, virtual: true)
     field(:laser_duration, :integer, virtual: true)
-    field(:invisibility, :boolean, virtual: true)
+    field(:invincibility, :boolean, virtual: true)
   end
 
   def changeset(player, params \\ %{}) do

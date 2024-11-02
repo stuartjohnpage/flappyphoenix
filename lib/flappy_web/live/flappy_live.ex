@@ -84,16 +84,14 @@ defmodule FlappyWeb.FlappyLive do
           <img
             src={@game_state.player.sprite.image}
             class={
-              cond do
-                @game_state.player.laser_allowed ->
-                  "filter drop-shadow-[0_0_10px_rgba(255,0,0,0.7)]"
-
-                @game_state.player.invisibility ->
-                  "filter drop-shadow-[0_0_10px_rgba(0,0,255,0.7)]"
-
-                true ->
-                  ""
-              end
+              [
+                @game_state.player.laser_allowed &&
+                  "filter drop-shadow-[0_5px_10px_rgba(255,0,0,0.7)]",
+                @game_state.player.invincibility &&
+                  "ring ring-offset-pink-500 ring-offset-2 outline-dotted"
+              ]
+              |> Enum.filter(& &1)
+              |> Enum.join(" ")
             }
           />
         </div>

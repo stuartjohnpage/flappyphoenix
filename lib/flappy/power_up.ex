@@ -8,16 +8,22 @@ defmodule Flappy.PowerUp do
   alias Flappy.Players
   alias Flappy.Position
 
-  defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: ""
+  defstruct position: {0, 0, 0, 0},
+            velocity: {0, 0},
+            sprite: %{image: "", size: {0, 0}, name: :atom, chance: 0, duration: 0},
+            id: ""
+
+  @spawn_rate 1000
 
   @power_up_sprites [
-    %{image: "/images/laser.svg", size: {50, 50}, name: :laser},
-    %{image: "/images/react.svg", size: {50, 50}, name: :invisibility},
-    %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb},
+    %{image: "/images/laser.svg", size: {50, 50}, name: :laser, chance: 50, duration: 10},
+    %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 30, duration: 30},
+    %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb, chance: 20, duration: 0}
   ]
 
+  @spec maybe_generate_power_up(%{:power_ups => any(), optional(any()) => any()}) :: any()
   def maybe_generate_power_up(%{power_ups: power_ups} = state) do
-    if Enum.random(1..1000) == 4 do
+    if Enum.random(1..@spawn_rate) == 4 do
       # Generate a new power_up
       generate_power_up(state)
     else
@@ -32,7 +38,7 @@ defmodule Flappy.PowerUp do
       %__MODULE__{
         position: {Enum.random(0..half_generation_width), 0, 0, 0},
         velocity: {0, Enum.random(100..150)},
-        sprite: Enum.random(@power_up_sprites),
+        sprite: pick_power_up(),
         id: UUID.uuid4()
       }
       | state.power_ups
@@ -58,8 +64,8 @@ defmodule Flappy.PowerUp do
         %{power_up | position: {new_x, new_y, x_percent, y_percent}}
       end)
       |> Enum.reject(fn power_up ->
-        {x, _y, _, _} = power_up.position
-        x < 0 - state.game_width / 100 * 25
+        {_x, _y, _x_percent, y} = power_up.position
+        y > 100
       end)
 
     %{state | power_ups: power_ups}
@@ -71,25 +77,25 @@ defmodule Flappy.PowerUp do
     {power_ups, granted_powers} =
       Enum.reduce(state.power_ups, {[], player.granted_powers}, fn power_up, {power_ups, granted_powers} ->
         if power_up.id in hit_ids do
-          {power_ups, [{power_up.sprite.name, 5} | granted_powers]}
+          {power_ups, [{power_up.sprite.name, power_up.sprite.duration} | granted_powers]}
         else
           {[power_up | power_ups], granted_powers}
         end
       end)
 
-    {laser_allowed?, invisibility?} =
+    {laser_allowed?, invincibility?} =
       Enum.reduce(granted_powers, {false, false}, fn
         {:laser, duration}, {_laser_allowed, invis} ->
           if duration > 0,
             do: {true, invis},
             else: {false, invis}
 
-        {:invisibility, duration}, {laser_allowed, _invis} ->
+        {:invincibility, duration}, {laser_allowed, _invis} ->
           if duration > 0,
             do: {laser_allowed, true},
             else: {laser_allowed, false}
 
-        {_invisibility, _laser_allowed}, _acc ->
+        {_invincibility, _laser_allowed}, _acc ->
           {false, false}
       end)
 
@@ -127,7 +133,7 @@ defmodule Flappy.PowerUp do
       | sprite: sprite,
         granted_powers: granted_powers,
         laser_allowed: laser_allowed?,
-        invisibility: invisibility?,
+        invincibility: invincibility?,
         score: score
     }
 
@@ -138,5 +144,18 @@ defmodule Flappy.PowerUp do
         enemies: enemies,
         explosions: explosions
     }
+  end
+
+  defp pick_power_up do
+    total_chance = Enum.sum(Enum.map(@power_up_sprites, & &1.chance))
+    random = :rand.uniform() * total_chance
+
+    Enum.reduce_while(@power_up_sprites, random, fn sprite, acc ->
+      if acc <= sprite.chance do
+        {:halt, sprite}
+      else
+        {:cont, acc - sprite.chance}
+      end
+    end)
   end
 end

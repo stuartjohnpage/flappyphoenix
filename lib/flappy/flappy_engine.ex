@@ -88,7 +88,7 @@ defmodule Flappy.FlappyEngine do
           laser_allowed: false,
           laser_beam: false,
           laser_duration: 0,
-          invisibility: false
+          invincibility: false
       },
       enemies: [
         %Enemy{
@@ -186,7 +186,7 @@ defmodule Flappy.FlappyEngine do
 
     {_x_pos, _y_pos, x_pos, y_pos} = player.position
 
-    collision? =
+    enemies_hit_by_player =
       Hitbox.check_for_enemy_collisions?(state)
 
     enemies_hit_by_beam =
@@ -198,8 +198,10 @@ defmodule Flappy.FlappyEngine do
 
     state =
       state
-      |> Enemy.remove_hit_enemies(enemies_hit_by_beam)
+      |> Enemy.remove_hit_enemies(enemies_hit_by_beam ++ enemies_hit_by_player)
       |> PowerUp.grant_power_ups(power_ups_hit)
+
+    collision? = if length(enemies_hit_by_player) > 0 && !state.player.invincibility, do: true, else: false
 
     cond do
       collision? ->
