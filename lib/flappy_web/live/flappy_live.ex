@@ -79,19 +79,7 @@ defmodule FlappyWeb.FlappyLive do
           phx-window-keydown="player_action"
           style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
         >
-          <img
-            src={@game_state.player.sprite.image}
-            class={
-              [
-                @game_state.player.laser_allowed &&
-                  "filter drop-shadow-[0_5px_10px_rgba(255,0,0,0.7)]",
-                @game_state.player.invincibility &&
-                  "ring ring-offset-pink-500 ring-offset-2 outline-dotted"
-              ]
-              |> Enum.filter(& &1)
-              |> Enum.join(" ")
-            }
-          />
+          <img src={@game_state.player.sprite.image} class={@sprite_class} />
         </div>
 
         <div
@@ -206,6 +194,7 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:messages, [])
      |> assign(:name_form, name_form)
      |> assign(:player_name, "")
+     |> assign(:sprite_class, "")
      |> assign(:is_mobile, is_mobile)
      |> assign(:zoom_level, zoom_level)
      |> assign(:game_height, game_height)
@@ -305,7 +294,9 @@ defmodule FlappyWeb.FlappyLive do
 
       {:noreply, assign(socket, :game_state, %{game_state | game_over: true})}
     else
-      {:noreply, assign(socket, :game_state, game_state)}
+      sprite_class = if game_state.player.laser_allowed, do: "filter drop-shadow-[0_5px_10px_rgba(255,0,0,0.7)]", else: ""
+
+      {:noreply, socket |> assign(:sprite_class, sprite_class) |> assign(:game_state, game_state)}
     end
   end
 
