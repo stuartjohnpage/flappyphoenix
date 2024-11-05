@@ -28,15 +28,23 @@ defmodule Flappy.Players do
     |> Repo.all()
   end
 
-  def get_default_sprite do
-    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix}
+  def get_sprite(:laser_invincibility) do
+    %{image: "/images/laser_invincible.svg", size: {128, 89}, name: :laser_phoenix}
   end
 
-  def get_laser_sprite do
+  def get_sprite(:invincibility) do
+    %{image: "/images/invincible.svg", size: {128, 89}, name: :laser_phoenix}
+  end
+
+  def get_sprite(:laser) do
     %{image: "/images/laser_phoenix.svg", size: {128, 89}, name: :laser_phoenix}
   end
 
-  def get_test_sprite do
+  def get_sprite(:test) do
     %{image: "/images/test_blue.svg", size: {100, 100}, name: :test}
+  end
+
+  def get_sprite do
+    %{image: "/images/flipped_phoenix.svg", size: {128, 89}, name: :phoenix}
   end
 end

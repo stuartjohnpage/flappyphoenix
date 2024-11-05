@@ -13,11 +13,11 @@ defmodule Flappy.PowerUp do
             sprite: %{image: "", size: {0, 0}, name: :atom, chance: 0, duration: 0},
             id: ""
 
-  @spawn_rate 1000
+  @spawn_rate 800
 
   @power_up_sprites [
     %{image: "/images/laser.svg", size: {50, 50}, name: :laser, chance: 50, duration: 10},
-    %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 30, duration: 30},
+    %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 30, duration: 10},
     %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb, chance: 20, duration: 0}
   ]
 
@@ -117,10 +117,18 @@ defmodule Flappy.PowerUp do
       end)
 
     sprite =
-      if laser_allowed? do
-        Players.get_laser_sprite()
-      else
-        Players.get_default_sprite()
+      cond do
+        laser_allowed? && invincibility? ->
+          Players.get_sprite(:laser_invincibility)
+
+        invincibility? ->
+          Players.get_sprite(:invincibility)
+
+        laser_allowed? ->
+          Players.get_sprite(:laser)
+
+        true ->
+          Players.get_sprite()
       end
 
     {score, enemies} =
