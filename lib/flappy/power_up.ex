@@ -13,7 +13,7 @@ defmodule Flappy.PowerUp do
             sprite: %{image: "", size: {0, 0}, name: :atom, chance: 0, duration: 0},
             id: ""
 
-  @spawn_rate 800
+  @spawn_rate 400
 
   @power_up_sprites [
     %{image: "/images/laser.svg", size: {50, 50}, name: :laser, chance: 50, duration: 10},
@@ -37,9 +37,9 @@ defmodule Flappy.PowerUp do
     [
       %__MODULE__{
         position: {Enum.random(0..half_generation_width), 0, 0, 0},
-        velocity: {0, Enum.random(100..150)},
+        velocity: {0, Enum.random(100..150) / state.zoom_level},
         sprite: pick_power_up(),
-        id: UUID.uuid4()
+        id: Ecto.UUID.generate()
       }
       | state.power_ups
     ]
@@ -107,7 +107,7 @@ defmodule Flappy.PowerUp do
             position: power_up.position,
             velocity: power_up.velocity,
             sprite: %{image: "/images/explosion.svg", size: {500, 500}, name: :explosion},
-            id: UUID.uuid4()
+            id: Ecto.UUID.generate()
           }
 
           {true, [new_explosion | explosions]}

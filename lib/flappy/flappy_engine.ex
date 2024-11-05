@@ -35,7 +35,7 @@ defmodule Flappy.FlappyEngine do
 
   ### GAME MULTIPLIERS
   @score_multiplier 10
-  @difficulty_score 500
+  @difficulty_score 200
 
   # Game state
   defstruct game_id: nil,
@@ -63,7 +63,6 @@ defmodule Flappy.FlappyEngine do
         zoom_level: zoom_level
       }) do
     gravity = @gravity / zoom_level
-    max_generation_height = round(game_height - game_height / 4)
     player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
     current_high_scores = Players.get_current_high_scores()
 
@@ -90,22 +89,8 @@ defmodule Flappy.FlappyEngine do
           laser_duration: 0,
           invincibility: false
       },
-      enemies: [
-        %Enemy{
-          position: {game_width, Enum.random(0..max_generation_height), 100, Enum.random(0..100)},
-          velocity: {Enum.random(-100..-50), 0},
-          sprite: Enum.random(Enemy.get_enemy_sprites()),
-          id: UUID.uuid4()
-        }
-      ],
-      power_ups: [
-        %PowerUp{
-          position: {game_width / 2, 0, 50, 0},
-          velocity: {0, Enum.random(50..100)},
-          sprite: Enum.random(PowerUp.power_up_sprites()),
-          id: UUID.uuid4()
-        }
-      ],
+      enemies: [],
+      power_ups: [],
       explosions: []
     }
 
@@ -228,6 +213,9 @@ defmodule Flappy.FlappyEngine do
   def handle_info(:score_tick, %{player: player} = state) do
     granted_powers =
       player.granted_powers
+      |> Enum.uniq_by(fn {power, _duration} ->
+        power
+      end)
       |> Enum.map(fn
         {_power, 0} -> nil
         {power, duration_left} -> {power, duration_left - 1}
@@ -263,7 +251,7 @@ defmodule Flappy.FlappyEngine do
 
   ### PUBLIC API
   def start_engine(game_height, game_width, player_name, zoom_level) do
-    game_id = UUID.uuid4()
+    game_id = Ecto.UUID.generate()
 
     GenServer.start_link(__MODULE__, %{
       game_height: game_height,
