@@ -34,9 +34,6 @@ defmodule Flappy.Players.Player do
     |> Changeset.validate_required([:name, :score, :version])
   end
 
-  def laser_sprite do
-  end
-
   def update_player(%{player: player, gravity: gravity, game_width: game_width, game_height: game_height} = state) do
     {x_position, y_position, _x_percent, _y_percent} = player.position
     {x_velocity, y_velocity} = player.velocity

@@ -83,7 +83,7 @@ defmodule Flappy.FlappyEngine do
         player
         | position: {100, game_height / 2, 10, 50},
           velocity: {0, 0},
-          sprite: Players.get_default_sprite(),
+          sprite: Players.get_sprite(),
           granted_powers: [],
           laser_allowed: false,
           laser_beam: false,
