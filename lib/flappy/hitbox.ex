@@ -45,14 +45,13 @@ defmodule Flappy.Hitbox do
       entity_hitbox =
         entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
 
+      # Broad phase
       if Polygons.Detection.collision?(single_hitbox, entity_hitbox, :fast) do
+        # Narrow phase
         if Polygons.Detection.collision?(single_hitbox, entity_hitbox), do: entity
       end
     end)
     |> Enum.filter(& &1)
-
-    # Broad phase
-    # Narrow phase
   end
 
   defp player_hitbox(x, y, width, height, game_width, game_height) do

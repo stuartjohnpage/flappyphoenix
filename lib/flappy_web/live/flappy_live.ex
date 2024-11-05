@@ -56,9 +56,7 @@ defmodule FlappyWeb.FlappyLive do
         <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
-        <%!-- start Gavin's idea --%>
-        <p :if={@game_state.player.score == 69} class="text-white text-4xl z-50">Nice!</p>
-        <%!-- end Gavin's idea --%> <br />
+        <br />
         <p class="text-white text-4xl z-50">Your final score was <%= @game_state.player.score %></p>
 
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
