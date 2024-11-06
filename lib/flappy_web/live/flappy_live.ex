@@ -28,22 +28,22 @@ defmodule FlappyWeb.FlappyLive do
             There are currently three power-ups, which fall from above, which make you stronger:
             <ul class="flex flex-col pt-4 items-center justify-center">
               <div class="flex flex-row">
+                <img src="/images/react.svg" class="w-7 h-7" />
                 <li>
                   <p class="text-white text-2xl text-center">REACT-ive armour</p>
                 </li>
-                <img src="/images/react.svg" class="w-7 h-7" />
               </div>
               <div class="flex flex-row">
-                <li>
-                  <p class="text-white text-2xl text-center">The ELIXIR of LASER</p>
-                </li>
                 <img src="/images/laser.svg" class="w-7 h-7" />
+                <li>
+                  <p class="text-white text-2xl text-center">The ELIXIR of LASER - Space to FIRE!</p>
+                </li>
               </div>
               <div class="flex flex-row">
+                <img src="/images/bomb.svg" class="w-7 h-7" />
                 <li>
                   <p class="text-white text-2xl text-center">THE OBANomb</p>
                 </li>
-                <img src="/images/bomb.svg" class="w-7 h-7" />
               </div>
             </ul>
           </p>

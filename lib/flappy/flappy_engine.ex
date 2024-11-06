@@ -35,7 +35,7 @@ defmodule Flappy.FlappyEngine do
 
   ### GAME MULTIPLIERS
   @score_multiplier 10
-  @difficulty_score 200
+  @difficulty_score 400
 
   # Game state
   defstruct game_id: nil,

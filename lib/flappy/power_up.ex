@@ -16,8 +16,8 @@ defmodule Flappy.PowerUp do
   @spawn_rate 400
 
   @power_up_sprites [
-    %{image: "/images/laser.svg", size: {50, 50}, name: :laser, chance: 50, duration: 10},
-    %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 30, duration: 10},
+    %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 50, duration: 10},
+    %{image: "/images/laser.svg", size: {50, 50}, name: :laser, chance: 30, duration: 10},
     %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb, chance: 20, duration: 0}
   ]
 
