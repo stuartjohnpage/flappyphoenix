@@ -21,7 +21,6 @@ defmodule Flappy.Enemy do
     difficultly_cap = state.difficulty_score - difficultly_rating
 
     if Enum.random(1..difficultly_cap) == 4 do
-      # Generate a new enemy
       generate_enemy(state)
     else
       enemies
@@ -38,7 +37,7 @@ defmodule Flappy.Enemy do
         position: {game_width, Enum.random(0..(max_generation_height - enemy_height)), 100, Enum.random(0..100)},
         velocity: {Enum.random(-100..-50) / zoom_level, 0},
         sprite: enemy_sprite,
-        id: UUID.uuid4()
+        id: Ecto.UUID.generate()
       }
       | enemies
     ]
@@ -81,7 +80,7 @@ defmodule Flappy.Enemy do
             position: enemy.position,
             velocity: enemy.velocity,
             sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
-            id: UUID.uuid4()
+            id: Ecto.UUID.generate()
           }
 
           {remaining, [explosion | explosions]}

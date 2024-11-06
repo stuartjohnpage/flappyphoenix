@@ -21,15 +21,31 @@ defmodule FlappyWeb.FlappyLive do
           <p class="text-white text-2xl text-center">Don't let the 🐦‍🔥 fly off of the screen!</p>
 
           <p class="text-white text-2xl text-center">
-            Oh, and don't let those other frameworks touch you!
-          </p>
-
-          <p class="text-white text-2xl text-center">
             Use WASD or the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
           </p>
 
           <p class="text-white text-2xl text-center">
-            Press the space bar to activate your power-ups!
+            There are currently three power-ups, which fall from above, which make you stronger:
+            <ul class="flex flex-col pt-4 items-center justify-center">
+              <div class="flex flex-row">
+                <img src="/images/react.svg" class="w-7 h-7" />
+                <li>
+                  <p class="text-white text-2xl text-center">REACT-ive armour</p>
+                </li>
+              </div>
+              <div class="flex flex-row">
+                <img src="/images/laser.svg" class="w-7 h-7" />
+                <li>
+                  <p class="text-white text-2xl text-center">The ELIXIR of LASER - Space to FIRE!</p>
+                </li>
+              </div>
+              <div class="flex flex-row">
+                <img src="/images/bomb.svg" class="w-7 h-7" />
+                <li>
+                  <p class="text-white text-2xl text-center">THE OBANomb</p>
+                </li>
+              </div>
+            </ul>
           </p>
         </div>
 
@@ -50,6 +66,9 @@ defmodule FlappyWeb.FlappyLive do
             <p class="text-4xl text-white">Play</p>
           </.button>
         </.simple_form>
+        <p class="text-white text-2xl text-center">
+          Oh, and don't let those other frameworks touch you!
+        </p>
       </div>
       <%!-- Score container --%>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
@@ -118,54 +137,6 @@ defmodule FlappyWeb.FlappyLive do
             <img src={explosion.sprite.image} />
           </div>
         <% end %>
-      </div>
-      <div
-        :if={@game_started && !@game_state.game_over && @is_mobile}
-        class="fixed bottom-0 left-0 right-0 flex justify-center p-4 z-50"
-      >
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            phx-click="player_action"
-            phx-value-key="ArrowLeft"
-            class="bg-blue-500 text-white p-2 rounded"
-          >
-            ⬅️
-          </button>
-
-          <div class="grid grid-rows-2 gap-2">
-            <button
-              phx-click="player_action"
-              phx-value-key="ArrowUp"
-              class="bg-blue-500 text-white p-2 rounded"
-            >
-              ⬆️
-            </button>
-
-            <button
-              phx-click="player_action"
-              phx-value-key="ArrowDown"
-              class="bg-blue-500 text-white p-2 rounded"
-            >
-              ⬇️
-            </button>
-          </div>
-
-          <button
-            phx-click="player_action"
-            phx-value-key="ArrowRight"
-            class="bg-blue-500 text-white p-2 rounded"
-          >
-            ➡️
-          </button>
-        </div>
-
-        <button
-          phx-click="player_action"
-          phx-value-key=" "
-          class="bg-red-500 text-white p-2 rounded ml-4"
-        >
-          🔥
-        </button>
       </div>
       <%!-- High Scores --%>
       <div class="fixed bottom-2 left-2 ml-2 w-60 z-50 rounded-lg p-3 text-sky-400">
