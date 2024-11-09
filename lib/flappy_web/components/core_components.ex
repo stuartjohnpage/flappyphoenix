@@ -297,7 +297,7 @@ defmodule FlappyWeb.CoreComponents do
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
 
   attr :rest, :global, include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
-                multiple pattern placeholder readonly required rows size step)
+                multiple pattern placeholder phx-change readonly required rows size step)
 
   def input(%{field: %FormField{} = field} = assigns) do
     errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
@@ -504,14 +504,14 @@ defmodule FlappyWeb.CoreComponents do
           phx-update={match?(%Phoenix.LiveView.LiveStream{}, @rows) && "stream"}
           class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
         >
-          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="group hover:bg-zinc-50">
+          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="group hover:bg-black">
             <td
               :for={{col, i} <- Enum.with_index(@col)}
               phx-click={@row_click && @row_click.(row)}
               class={["relative p-0", @row_click && "hover:cursor-pointer"]}
             >
-              <div class="block py-4 pr-6">
-                <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl" />
+              <div class="block">
+                <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-black sm:rounded-l-xl" />
                 <span class={["relative", i == 0 && "font-semibold text-zinc-900"]}>
                   <%= render_slot(col, @row_item.(row)) %>
                 </span>
@@ -576,10 +576,10 @@ defmodule FlappyWeb.CoreComponents do
 
   def back(assigns) do
     ~H"""
-    <div class="mt-16">
+    <div>
       <.link
         navigate={@navigate}
-        class="text-sm font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
+        class="text-sm font-semibold leading-6 text-cyan-100 hover:text-fuchsia-500"
       >
         <.icon name="hero-arrow-left-solid" class="h-3 w-3" /> <%= render_slot(@inner_block) %>
       </.link>

@@ -17,14 +17,20 @@ defmodule Flappy.Players do
     Repo.update(changeset)
   end
 
-  def get_current_high_scores do
-    current_game_version = Application.get_env(:flappy, :game_version, "1")
+  def get_available_versions do
+    Player
+    |> select([p], {p.version})
+    |> Repo.all()
+    |> Enum.flat_map(fn {version} -> if is_nil(version), do: [], else: [version] end)
+    |> Enum.uniq()
+  end
 
+  def get_current_high_scores(limit, current_game_version) do
     Player
     |> where([p], p.version == ^current_game_version)
     |> select([p], {p.name, p.score})
     |> order_by(desc: :score)
-    |> limit(5)
+    |> limit(^limit)
     |> Repo.all()
   end
 
