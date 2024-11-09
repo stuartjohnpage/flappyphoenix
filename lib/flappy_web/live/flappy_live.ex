@@ -140,13 +140,21 @@ defmodule FlappyWeb.FlappyLive do
       </div>
       <%!-- High Scores --%>
       <div class="fixed bottom-2 left-2 ml-2 w-60 z-50 rounded-lg p-3 text-sky-400">
-        <h3 class="font-bold mb-2">High Scores</h3>
-        <ul>
-          <%= for {name, score} <- @current_high_scores do %>
-            <li><%= name %>: <%= score %></li>
-          <% end %>
-        </ul>
+        <div :if={@game_started}>
+          <h3 class="font-bold mb-2">High Scores</h3>
+          <ul>
+            <%= for {name, score} <- @current_high_scores do %>
+              <li><%= name %>: <%= score %></li>
+            <% end %>
+          </ul>
+        </div>
+        <div>
+          <.back :if={!@game_started} navigate={~p"/highscores"}>
+            <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Highscores</p>
+          </.back>
+        </div>
       </div>
+      asdf
     </div>
     """
   end

@@ -1,28 +1,29 @@
 let Hooks = {};
 
+// Move updateViewport to module scope
+const updateViewport = function(hook) {
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+  const zoomLevel = window.devicePixelRatio;
+
+  hook.pushEvent("resize", {
+    height: viewportHeight,
+    width: viewportWidth,
+    zoom: zoomLevel
+  });
+};
+
 Hooks.ResizeHook = {
   mounted() {
-    // Call this function initially and whenever the window is resized
-    const updateViewport = () => {
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      const zoomLevel = window.devicePixelRatio
-
-      // Push new values to LiveView
-      this.pushEvent("resize", {
-        height: viewportHeight,
-        width: viewportWidth,
-        zoom: zoomLevel
-      });
-    };
-
-    // Detect viewport resize
-    window.addEventListener("resize", updateViewport);
-    updateViewport(); // Call initially to send the current values
+    // Create bound handler that can be removed later
+    this.boundUpdateViewport = () => updateViewport(this);
+    
+    window.addEventListener("resize", this.boundUpdateViewport);
+    this.boundUpdateViewport(); // Call initially
   },
   
   destroyed() {
-    window.removeEventListener("resize", updateViewport);
+    window.removeEventListener("resize", this.boundUpdateViewport);
   }
 };
 
