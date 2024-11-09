@@ -81,6 +81,9 @@ defmodule FlappyWeb.FlappyLive do
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
+        <.back navigate={~p"/highscores"}>
+          <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Highscores</p>
+        </.back>
       </div>
 
       <div
@@ -154,7 +157,6 @@ defmodule FlappyWeb.FlappyLive do
           </.back>
         </div>
       </div>
-      asdf
     </div>
     """
   end
