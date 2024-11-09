@@ -20,6 +20,7 @@ defmodule FlappyWeb.Router do
     pipe_through :browser
 
     live "/", FlappyLive
+    live "/highscores", FlappyLiveScores
   end
 
   # Other scopes may use custom stacks.

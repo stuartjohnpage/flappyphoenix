@@ -64,7 +64,8 @@ defmodule Flappy.FlappyEngine do
       }) do
     gravity = @gravity / zoom_level
     player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
-    current_high_scores = Players.get_current_high_scores()
+    current_game_version = Application.get_env(:flappy, :game_version, "1")
+    current_high_scores = Players.get_current_high_scores(5, current_game_version)
 
     state = %__MODULE__{
       current_high_scores: current_high_scores,
