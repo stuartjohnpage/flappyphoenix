@@ -23,6 +23,7 @@ defmodule Flappy.Players do
     |> Repo.all()
     |> Enum.flat_map(fn {version} -> if is_nil(version), do: [], else: [version] end)
     |> Enum.uniq()
+    |> Enum.sort(:desc)
   end
 
   def get_current_high_scores(limit, current_game_version) do
