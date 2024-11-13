@@ -3,8 +3,8 @@ defmodule Flappy.Position do
   Position functions
   """
   def get_percentage_position({x_position, y_position}, game_width, game_height) do
-    percentage_x = x_position / game_width * 100
-    percentage_y = y_position / game_height * 100
+    percentage_x = Float.floor(x_position / game_width * 100, 2)
+    percentage_y = Float.floor(y_position / game_height * 100, 2)
 
     {percentage_x, percentage_y}
   end

@@ -56,8 +56,8 @@ defmodule Flappy.PowerUp do
       |> Enum.map(fn power_up ->
         {x, y, _x_percent, _y_percent} = power_up.position
         {vx, vy} = power_up.velocity
-        new_x = x + vx * (state.game_tick_interval / 1000)
-        new_y = y + vy * (state.game_tick_interval / 1000)
+        new_x = Float.floor(x + vx * (state.game_tick_interval / 1000), 2)
+        new_y = Float.floor(y + vy * (state.game_tick_interval / 1000), 2)
 
         {x_percent, y_percent} = Position.get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
 
