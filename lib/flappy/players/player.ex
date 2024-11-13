@@ -38,9 +38,9 @@ defmodule Flappy.Players.Player do
     {x_position, y_position, _x_percent, _y_percent} = player.position
     {x_velocity, y_velocity} = player.velocity
 
-    new_y_velocity = y_velocity + gravity * (state.game_tick_interval / 1000)
-    new_y_position = y_position + new_y_velocity * (state.game_tick_interval / 1000)
-    new_x_position = x_position + x_velocity * (state.game_tick_interval / 1000)
+    new_y_velocity = Float.floor(y_velocity + gravity * (state.game_tick_interval / 1000), 2)
+    new_y_position = Float.floor(y_position + new_y_velocity * (state.game_tick_interval / 1000), 2)
+    new_x_position = Float.floor(x_position + x_velocity * (state.game_tick_interval / 1000), 2)
     laser_on? = player.laser_duration > 0
     laser_duration = if laser_on?, do: player.laser_duration - 1, else: 0
 
