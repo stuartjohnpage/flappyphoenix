@@ -49,7 +49,6 @@ defmodule FlappyWeb.FlappyLiveScores do
   end
 
   def handle_event("version_selected", %{"version" => version}, socket) do
-    IO.inspect("here mate")
     {:noreply, push_patch(socket, to: ~p"/highscores?version=#{version}")}
   end
 
