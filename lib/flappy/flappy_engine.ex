@@ -225,7 +225,7 @@ defmodule Flappy.FlappyEngine do
 
     player = %{player | score: player.score + 1, granted_powers: granted_powers}
     state = %{state | player: player}
-    state = if rem(player.score, 2) == 0, do: %{state | enemies: Enemy.generate_enemy(state)}, else: state
+    state = if rem(player.score, 2) == 0, do: %{state | enemies: Enemy.maybe_generate_enemy(state)}, else: state
     state = if rem(player.score, 10) == 0, do: %{state | power_ups: PowerUp.generate_power_up(state)}, else: state
 
     {:noreply, state}
