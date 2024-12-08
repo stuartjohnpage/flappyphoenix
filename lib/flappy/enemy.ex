@@ -9,6 +9,8 @@ defmodule Flappy.Enemy do
 
   defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: ""
 
+  @enemy_limit 300
+
   @enemy_sprites [
     %{image: "/images/ruby_rails.svg", size: {397, 142}, name: :ruby_rails},
     %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
@@ -20,7 +22,7 @@ defmodule Flappy.Enemy do
     difficultly_rating = if score < state.difficulty_score - 5, do: score, else: state.difficulty_score - 4
     difficultly_cap = state.difficulty_score - difficultly_rating
 
-    if Enum.random(1..difficultly_cap) == 4 do
+    if Enum.random(1..difficultly_cap) == 4 && length(enemies) < @enemy_limit do
       generate_enemy(state)
     else
       enemies
