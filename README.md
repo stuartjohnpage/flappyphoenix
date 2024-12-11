@@ -16,16 +16,12 @@ This project should not be confused with [Flappy Phoenix](https://github.com/moo
 ## Gameplay
 
 - **Objective**: Avoid touching any of the framework logos that appear as enemies and keep the bird within the screen bounds.
-- **Controls**: Use the arrow keys to move up, down, left, and right.
-
-  ```
-  ⬆️  - Move Up
-  ⬇️  - Move Down
-  ⬅️  - Move Left
-  ➡️  - Move Right
-  ```
-
-- **Score**: The score increases the longer you survive.
+- **Controls**: Use the arrow keys or WASD to move up, down, left, and right.
+- **Score**: The score increases the longer you survive, and the more enemies you destroy.
+- **Power-ups**: Collect special items to gain temporary advantages:
+- `REACT-ive armour`: Temporary invincibility, which destroys enemies you come into contact with.
+- `The ELIXIR of LASER`: Press the space bar to fire a laser which destroys all enemies in it's path.
+- `THE OBANomb`: Destroys all enemies on the screen.
 
 ## Installation
 
@@ -35,6 +31,7 @@ To run this project, you will need:
 
 - Elixir
 - Phoenix Framework
+- Postgres
 
 ### Steps
 
@@ -49,32 +46,26 @@ To run this project, you will need:
    mix deps.get
    ```
 
-3. Start the Phoenix server:
+3. Create the database:
+   ```bash
+   mix ecto.create
+   mix ecto.migrate
+   ```
+
+4. Start the Phoenix server:
    ```bash
    mix phx.server
    ```
 
-4. Open your web browser and navigate to `http://localhost:4000` to play the game.
+5. Open your web browser and navigate to `http://localhost:4000` to play the game.
 
-## Usage
-
-### Starting the Game
-
-When you first load the game, you will see a welcome screen. Click the "Play" button to begin the game.
-
-### In-Game
-
-Use the arrow keys to navigate your phoenix and avoid the other framework logos. If the phoenix touches an enemy logo or flies off the screen, the game will end, and your final score will be displayed.
-
-### Restarting the Game
-
-Click the "Play Again?" button to restart the game after it ends.
 
 ## Credits
 
 - Game developed using Elixir and the Phoenix Framework.
 - Inspired by the classic "Flappy Bird" game.
-- Competing framework logos: Angular, Django, JQuery, Laravel, Ember, React, Vue, Node, and Ruby on Rails.
+- Framework SVGs: Angular, React, Node, and Ruby on Rails.
+- Other SVGs: Elixir, Oban
 
 Enjoy the game and good luck flying your phoenix! 🐦‍🔥
 
@@ -82,4 +73,5 @@ If you encounter any issues or have suggestions, feel free to contribute or open
 
 ---
 
-Stuart Page
+Disclaimer:
+This project is a personal side project developed to explore game development concepts using Elixir and the Phoenix Framework. The logos and assets used, including those of open-source frameworks such as Angular, React, Node, Ruby on Rails, Elixir, and Oban, are included in good faith under fair use principles for educational and illustrative purposes only. All referenced logos and trademarks are the property of their respective owners. This project is not affiliated with, endorsed by, or sponsored by any of the frameworks, their maintainers, or associated organizations.
