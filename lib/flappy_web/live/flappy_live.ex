@@ -248,6 +248,7 @@ defmodule FlappyWeb.FlappyLive do
     if String.length(player_name) in 1..10 do
       player_name
       |> HtmlSanitizeEx.strip_tags()
+      |> sanitize_player_name()
       |> start_game(socket)
     else
       {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
@@ -383,5 +384,20 @@ defmodule FlappyWeb.FlappyLive do
     |> binary_part(0, 2)
     |> :binary.decode_unsigned()
     |> rem(50)
+  end
+
+  defp sanitize_player_name(player_name) do
+    config = Expletive.configure(blacklist: Expletive.Blacklist.english())
+
+    player_name =
+      player_name
+      |> HtmlSanitizeEx.strip_tags()
+      |> Expletive.sanitize(config)
+
+    if player_name |> String.replace(" ", "") |> Expletive.profane?(config) do
+      "Anonymous"
+    else
+      player_name
+    end
   end
 end
