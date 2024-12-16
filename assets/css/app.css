@@ -8,6 +8,11 @@ html, body {
   overflow: hidden;
 }
 
+.scrollable-content {
+  overflow: auto;
+  height: 100vh;
+}
+
 .explosion {
   animation: explode 0.15s ease-out;
   transform-origin: center;

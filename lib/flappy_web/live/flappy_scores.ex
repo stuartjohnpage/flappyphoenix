@@ -6,33 +6,35 @@ defmodule FlappyWeb.FlappyLiveScores do
 
   def render(assigns) do
     ~H"""
-    <h1 class="text-cyan-100 text-9xl">High Scores</h1>
-    <div class="flex flex-row justify-between">
-      <.back navigate={~p"/"}>
-        <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Back to Game</p>
-      </.back>
-      <div>
-        <h1 class="text-cyan-100">Version</h1>
-        <.simple_form for={@form} phx-change="version_selected">
-          <.input
-            class="w-2/12"
-            type="select"
-            name="version"
-            options={@available_versions}
-            value={@version}
-          />
-        </.simple_form>
+    <div class="overflow-y-auto">
+      <h1 class="text-cyan-100 text-9xl ">High Scores</h1>
+      <div class="flex flex-row justify-between">
+        <.back navigate={~p"/"}>
+          <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Back to Game</p>
+        </.back>
+        <div>
+          <h1 class="text-cyan-100">Version</h1>
+          <.simple_form for={@form} phx-change="version_selected">
+            <.input
+              class="w-2/12"
+              type="select"
+              name="version"
+              options={@available_versions}
+              value={@version}
+            />
+          </.simple_form>
+        </div>
       </div>
-    </div>
-    <div class="overflow-clip">
-      <.table id="players" rows={@players}>
-        <:col :let={player} label="Name">
-          <p class="text-cyan-100"><%= player.name %></p>
-        </:col>
-        <:col :let={player} label="Score">
-          <p class="text-cyan-100"><%= player.score %></p>
-        </:col>
-      </.table>
+      <div class="scrollable-content">
+        <.table id="players" rows={@players}>
+          <:col :let={player} label="Name">
+            <p class="text-cyan-100"><%= player.name %></p>
+          </:col>
+          <:col :let={player} label="Score">
+            <p class="text-cyan-100"><%= player.score %></p>
+          </:col>
+        </.table>
+      </div>
     </div>
     """
   end
@@ -53,8 +55,10 @@ defmodule FlappyWeb.FlappyLiveScores do
   end
 
   def handle_params(%{"version" => version}, _uri, socket) do
+    limit = 100
+
     players =
-      100
+      limit
       |> Players.get_current_high_scores(version)
       |> Enum.map(fn {name, score} -> %{name: name, score: score} end)
 
