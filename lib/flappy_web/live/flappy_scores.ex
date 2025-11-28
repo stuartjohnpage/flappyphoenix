@@ -28,10 +28,10 @@ defmodule FlappyWeb.FlappyLiveScores do
       <div class="scrollable-content">
         <.table id="players" rows={@players}>
           <:col :let={player} label="Name">
-            <p class="text-cyan-100"><%= player.name %></p>
+            <p class="text-cyan-100">{player.name}</p>
           </:col>
           <:col :let={player} label="Score">
-            <p class="text-cyan-100"><%= player.score %></p>
+            <p class="text-cyan-100">{player.score}</p>
           </:col>
         </.table>
       </div>
