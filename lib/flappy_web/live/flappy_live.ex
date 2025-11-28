@@ -76,7 +76,7 @@ defmodule FlappyWeb.FlappyLive do
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
         <br />
-        <p class="text-white text-4xl z-50">Your final score was <%= @game_state.player.score %></p>
+        <p class="text-white text-4xl z-50">Your final score was {@game_state.player.score}</p>
 
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
@@ -90,7 +90,7 @@ defmodule FlappyWeb.FlappyLive do
         id="score-container"
         class=" z-50 absolute top-0 left-0 ml-11 mt-11 bg-black rounded-md p-2"
       >
-        <p class="text-white text-4xl">Score: <%= @game_state.player.score %></p>
+        <p class="text-white text-4xl">Score: {@game_state.player.score}</p>
       </div>
       <%!-- Game Area --%>
       <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
@@ -147,7 +147,7 @@ defmodule FlappyWeb.FlappyLive do
           <h3 class="font-bold mb-2">High Scores</h3>
           <ul>
             <%= for {name, score} <- @current_high_scores do %>
-              <li><%= name %>: <%= score %></li>
+              <li>{name}: {score}</li>
             <% end %>
           </ul>
         </div>
