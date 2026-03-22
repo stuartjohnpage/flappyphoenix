@@ -10,6 +10,11 @@ defmodule FlappyWeb.Router do
     plug :put_root_layout, html: {FlappyWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :clacks
+  end
+
+  defp clacks(conn, _opts) do
+    Plug.Conn.put_resp_header(conn, "x-clacks-overhead", "GNU Terry Pratchett")
   end
 
   pipeline :api do
