@@ -108,7 +108,7 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      # expired (0) should be removed, expiring (1) decremented to 0 and removed, active (2) decremented to 1
+      # expired (duration 0) is removed; expiring (1) decremented to 0 but kept; active (2) decremented to 1
       assert length(new_state.explosions) == 2
       durations = Enum.map(new_state.explosions, & &1.duration) |> Enum.sort()
       assert 0 in durations
@@ -181,6 +181,17 @@ defmodule Flappy.GameStateTest do
       assert {:game_over, new_state} = GameState.tick(state)
       assert new_state.game_over == true
     end
+
+    test "game over when player goes off left side" do
+      state = base_state()
+      # After tick, sprite may be resized by grant_power_ups (128px wide).
+      # Threshold: 0 - 128/800*100 = -16%. Use x% well below that.
+      player = %{state.player | position: {-200.0, 300.0, -25.0, 50.0}}
+      state = %{state | player: player}
+
+      assert {:game_over, new_state} = GameState.tick(state)
+      assert new_state.game_over == true
+    end
   end
 
   describe "tick/1 laser" do
@@ -229,6 +240,44 @@ defmodule Flappy.GameStateTest do
       assert new_state.power_ups == []
       assert new_state.player.invincibility == true
       assert {:invincibility, _duration} = List.keyfind(new_state.player.granted_powers, :invincibility, 0)
+    end
+
+    test "bomb power-up destroys all enemies and creates explosion" do
+      state = base_state()
+      {px, py, pxp, pyp} = state.player.position
+
+      # Place bomb power-up on the player
+      bomb = %Flappy.PowerUp{
+        position: {px, py, pxp, pyp},
+        velocity: {0, 100},
+        sprite: %{image: "/images/bomb.svg", size: {50, 50}, name: :bomb, chance: 20, duration: 0},
+        id: "bomb-1"
+      }
+
+      # Place some enemies on screen
+      enemy1 = %Flappy.Enemy{
+        position: {400.0, 200.0, 50.0, 33.3},
+        velocity: {-75.0, 0},
+        sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
+        id: "enemy-1"
+      }
+      enemy2 = %Flappy.Enemy{
+        position: {600.0, 100.0, 75.0, 16.6},
+        velocity: {-75.0, 0},
+        sprite: %{image: "/images/node.svg", size: {100, 100}, name: :node},
+        id: "enemy-2"
+      }
+
+      state = %{state | power_ups: [bomb], enemies: [enemy1, enemy2]}
+
+      {:ok, new_state} = GameState.tick(state)
+
+      # Bomb should destroy all enemies
+      assert new_state.enemies == []
+      # Should have explosion from the bomb
+      assert length(new_state.explosions) > 0
+      # Score should increase by enemies_killed * score_multiplier
+      assert new_state.player.score >= 2 * state.score_multiplier
     end
   end
 
