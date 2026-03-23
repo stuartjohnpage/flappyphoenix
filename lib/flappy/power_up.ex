@@ -5,13 +5,15 @@ defmodule Flappy.PowerUp do
   The position is a tuple of x and y coordinates, and the velocity is a tuple of x and y velocities.
   """
   alias Flappy.Explosion
+  alias Flappy.Hitbox
   alias Flappy.Players
   alias Flappy.Position
 
   defstruct position: {0, 0, 0, 0},
             velocity: {0, 0},
             sprite: %{image: "", size: {0, 0}, name: :atom, chance: 0, duration: 0},
-            id: ""
+            id: "",
+            hitbox: nil
 
   @spawn_rate 400
 
@@ -61,7 +63,9 @@ defmodule Flappy.PowerUp do
 
         {x_percent, y_percent} = Position.get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
 
-        %{power_up | position: {new_x, new_y, x_percent, y_percent}}
+        {w, h} = power_up.sprite.size
+        hitbox = Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, power_up.sprite.name)
+        %{power_up | position: {new_x, new_y, x_percent, y_percent}, hitbox: hitbox}
       end)
       |> Enum.reject(fn power_up ->
         {_x, _y, _x_percent, y} = power_up.position

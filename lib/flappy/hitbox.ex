@@ -1,9 +1,10 @@
 defmodule Flappy.Hitbox do
   @moduledoc """
-  Hitbox functions
+  Hitbox computation and collision detection.
 
-  You should change it so the hitbox only gets made once when the enemy is generated.
-
+  Hitbox polygons are computed once per entity per tick (after position updates)
+  and cached on the entity struct. Collision detection reads the cached hitbox
+  instead of recomputing it for every check.
   """
   alias Flappy.Position
 
@@ -13,41 +14,40 @@ defmodule Flappy.Hitbox do
     detect_multiple_hits(enemies, laser_hitbox, game_state)
   end
 
-  def get_hit_power_ups(power_ups, %{player: %{sprite: %{size: player_size}, position: player_position}} = state) do
-    {player_length, player_height} = player_size
-    {_, _, player_x, player_y} = player_position
-
-    player_hitbox =
-      player_hitbox(player_x, player_y, player_length, player_height, state.game_width, state.game_height)
-
-    detect_multiple_hits(power_ups, player_hitbox, state)
+  def get_hit_power_ups(power_ups, %{player: player} = state) do
+    p_hitbox = get_or_compute_player_hitbox(player, state)
+    detect_multiple_hits(power_ups, p_hitbox, state)
   end
 
-  def check_for_enemy_collisions?(
-        %{player: %{sprite: %{size: player_size}, position: player_position}, enemies: enemies} = state
-      ) do
-    {player_length, player_height} = player_size
-    {_, _, player_x, player_y} = player_position
+  def check_for_enemy_collisions?(%{player: player, enemies: enemies} = state) do
+    p_hitbox = get_or_compute_player_hitbox(player, state)
+    detect_multiple_hits(enemies, p_hitbox, state)
+  end
 
-    player_hitbox =
-      player_hitbox(player_x, player_y, player_length, player_height, state.game_width, state.game_height)
+  defp get_or_compute_player_hitbox(%{hitbox: hitbox}, _state) when not is_nil(hitbox), do: hitbox
 
-    detect_multiple_hits(enemies, player_hitbox, state)
+  defp get_or_compute_player_hitbox(player, state) do
+    {player_length, player_height} = player.sprite.size
+    {_, _, player_x, player_y} = player.position
+    player_hitbox(player_x, player_y, player_length, player_height, state.game_width, state.game_height)
   end
 
   defp detect_multiple_hits(multiple_entities, single_hitbox, game_state) do
     multiple_entities
     |> Enum.map(fn entity ->
-      {_, _, entity_x, entity_y} = entity.position
-      {width, height} = entity.sprite.size
-      name = entity.sprite.name
-
-      entity_hitbox =
-        entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
-
-      perform_detection(single_hitbox, entity_hitbox, entity)
+      e_hitbox = get_or_compute_entity_hitbox(entity, game_state)
+      perform_detection(single_hitbox, e_hitbox, entity)
     end)
     |> Enum.filter(& &1)
+  end
+
+  defp get_or_compute_entity_hitbox(%{hitbox: hitbox}, _game_state) when not is_nil(hitbox), do: hitbox
+
+  defp get_or_compute_entity_hitbox(entity, game_state) do
+    {_, _, entity_x, entity_y} = entity.position
+    {width, height} = entity.sprite.size
+    name = entity.sprite.name
+    entity_hitbox(entity_x, entity_y, width, height, game_state.game_width, game_state.game_height, name)
   end
 
   defp perform_detection(single_hitbox, entity_hitbox, entity) do
@@ -58,7 +58,7 @@ defmodule Flappy.Hitbox do
     end
   end
 
-  defp player_hitbox(x, y, width, height, game_width, game_height) do
+  def player_hitbox(x, y, width, height, game_width, game_height) do
     w = width / game_width * 100
     h = height / game_height * 100
 
@@ -86,7 +86,7 @@ defmodule Flappy.Hitbox do
     ])
   end
 
-  defp entity_hitbox(x, y, width, height, game_width, game_height, :angular) do
+  def entity_hitbox(x, y, width, height, game_width, game_height, :angular) do
     w = width / game_width * 100
     h = height / game_height * 100
 
@@ -100,7 +100,7 @@ defmodule Flappy.Hitbox do
     Polygons.Polygon.make([left_top, top, right_top, right_bottom, bottom, left_bottom])
   end
 
-  defp entity_hitbox(x, y, width, height, game_width, game_height, :node) do
+  def entity_hitbox(x, y, width, height, game_width, game_height, :node) do
     w = width / game_width * 100
     h = height / game_height * 100
 
@@ -114,7 +114,7 @@ defmodule Flappy.Hitbox do
     Polygons.Polygon.make([left_top, top, right_top, right_bottom, bottom, left_bottom])
   end
 
-  defp entity_hitbox(x, y, width, height, game_width, game_height, :ruby_rails) do
+  def entity_hitbox(x, y, width, height, game_width, game_height, :ruby_rails) do
     w = width / game_width * 100
     h = height / game_height * 100
 
@@ -127,7 +127,7 @@ defmodule Flappy.Hitbox do
     Polygons.Polygon.make([top, right_top, right_bottom, bottom, left_bottom])
   end
 
-  defp entity_hitbox(x, y, width, height, game_width, game_height, _) do
+  def entity_hitbox(x, y, width, height, game_width, game_height, _) do
     w = width / game_width * 100
     h = height / game_height * 100
 
