@@ -55,8 +55,7 @@ defmodule Flappy.GameState do
       PowerUp.derive_power_flags(granted_powers)
 
     player =
-      player
-      |> Map.merge(%{
+      Map.merge(player, %{
         score: player.score + 1,
         granted_powers: granted_powers,
         laser_allowed: laser_allowed,

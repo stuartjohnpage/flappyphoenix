@@ -19,7 +19,8 @@ defmodule Flappy.PowerUpTest do
 
       assert flags.laser_allowed == false
       assert flags.invincibility == true
-      assert flags.sprite.name == :laser_phoenix  # invincible sprite
+      # invincible sprite
+      assert flags.sprite.name == :laser_phoenix
     end
 
     test "both laser and invincibility returns both true with combined sprite" do
@@ -137,9 +138,10 @@ defmodule Flappy.PowerUpTest do
       # Next tick it'll be removed. But flags should update based on current state.
       # With duration 0, laser is effectively expired.
       assert new_state.player.laser_allowed == false,
-        "laser_allowed should be false when laser power expires"
+             "laser_allowed should be false when laser power expires"
+
       assert new_state.player.sprite == Flappy.Players.get_sprite(),
-        "sprite should revert to default when laser expires"
+             "sprite should revert to default when laser expires"
     end
   end
 

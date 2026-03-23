@@ -60,12 +60,14 @@ defmodule Flappy.GameStateTest do
   describe "tick/1 enemy movement" do
     test "moves enemies leftward" do
       state = base_state()
+
       enemy = %Flappy.Enemy{
         position: {400.0, 200.0, 50.0, 33.3},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
         id: "enemy-1"
       }
+
       state = %{state | enemies: [enemy]}
 
       {:ok, new_state} = GameState.tick(state)
@@ -78,18 +80,21 @@ defmodule Flappy.GameStateTest do
 
     test "removes enemies that are far off-screen left" do
       state = base_state()
+
       offscreen_enemy = %Flappy.Enemy{
         position: {-300.0, 200.0, -37.5, 33.3},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
         id: "enemy-offscreen"
       }
+
       onscreen_enemy = %Flappy.Enemy{
         position: {400.0, 200.0, 50.0, 33.3},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
         id: "enemy-onscreen"
       }
+
       state = %{state | enemies: [offscreen_enemy, onscreen_enemy]}
 
       {:ok, new_state} = GameState.tick(state)
@@ -104,16 +109,38 @@ defmodule Flappy.GameStateTest do
   describe "tick/1 explosions" do
     test "decrements explosion duration and removes expired ones" do
       state = base_state()
-      active = %Flappy.Explosion{duration: 2, position: {100.0, 100.0, 12.5, 16.6}, velocity: {-50, 0}, sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion}, id: "exp-1"}
-      expiring = %Flappy.Explosion{duration: 1, position: {200.0, 200.0, 25.0, 33.3}, velocity: {-50, 0}, sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion}, id: "exp-2"}
-      expired = %Flappy.Explosion{duration: 0, position: {300.0, 300.0, 37.5, 50.0}, velocity: {-50, 0}, sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion}, id: "exp-3"}
+
+      active = %Flappy.Explosion{
+        duration: 2,
+        position: {100.0, 100.0, 12.5, 16.6},
+        velocity: {-50, 0},
+        sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+        id: "exp-1"
+      }
+
+      expiring = %Flappy.Explosion{
+        duration: 1,
+        position: {200.0, 200.0, 25.0, 33.3},
+        velocity: {-50, 0},
+        sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+        id: "exp-2"
+      }
+
+      expired = %Flappy.Explosion{
+        duration: 0,
+        position: {300.0, 300.0, 37.5, 50.0},
+        velocity: {-50, 0},
+        sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+        id: "exp-3"
+      }
+
       state = %{state | explosions: [active, expiring, expired]}
 
       {:ok, new_state} = GameState.tick(state)
 
       # expired (duration 0) is removed; expiring (1) decremented to 0 but kept; active (2) decremented to 1
       assert length(new_state.explosions) == 2
-      durations = Enum.map(new_state.explosions, & &1.duration) |> Enum.sort()
+      durations = new_state.explosions |> Enum.map(& &1.duration) |> Enum.sort()
       assert 0 in durations
       assert 1 in durations
     end
@@ -124,12 +151,14 @@ defmodule Flappy.GameStateTest do
       state = base_state()
       # Place enemy right on top of player
       {px, py, pxp, pyp} = state.player.position
+
       enemy = %Flappy.Enemy{
         position: {px, py, pxp, pyp},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {50, 50}, name: :angular},
         id: "enemy-collide"
       }
+
       state = %{state | enemies: [enemy]}
 
       assert {:game_over, new_state} = GameState.tick(state)
@@ -139,12 +168,14 @@ defmodule Flappy.GameStateTest do
     test "with invincibility, destroys enemies instead of game over" do
       state = base_state()
       {px, py, pxp, pyp} = state.player.position
+
       enemy = %Flappy.Enemy{
         position: {px, py, pxp, pyp},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {50, 50}, name: :angular},
         id: "enemy-collide"
       }
+
       player = %{state.player | invincibility: true, granted_powers: [{:invincibility, 5}]}
       state = %{state | enemies: [enemy], player: player}
 
@@ -201,21 +232,25 @@ defmodule Flappy.GameStateTest do
     test "laser beam destroys enemies in its path" do
       state = base_state()
       # Player at left side, enemy to the right at same y-level
-      player = %{state.player |
-        laser_beam: true,
-        laser_duration: 3,
-        laser_allowed: true,
-        invincibility: true,
-        granted_powers: [{:invincibility, 5}]
+      player = %{
+        state.player
+        | laser_beam: true,
+          laser_duration: 3,
+          laser_allowed: true,
+          invincibility: true,
+          granted_powers: [{:invincibility, 5}]
       }
+
       # Enemy at same y as player but to the right
       {_px, py, _pxp, pyp} = state.player.position
+
       enemy = %Flappy.Enemy{
         position: {500.0, py, 62.5, pyp},
         velocity: {-75.0, 0},
         sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
         id: "enemy-laser-target"
       }
+
       state = %{state | player: player, enemies: [enemy]}
 
       {:ok, new_state} = GameState.tick(state)
@@ -230,12 +265,14 @@ defmodule Flappy.GameStateTest do
     test "player collects power-up on contact and gains its effect" do
       state = base_state()
       {px, py, pxp, pyp} = state.player.position
+
       power_up = %Flappy.PowerUp{
         position: {px, py, pxp, pyp},
         velocity: {0, 100},
         sprite: %{image: "/images/react.svg", size: {50, 50}, name: :invincibility, chance: 50, duration: 10},
         id: "powerup-1"
       }
+
       state = %{state | power_ups: [power_up]}
 
       {:ok, new_state} = GameState.tick(state)
@@ -264,6 +301,7 @@ defmodule Flappy.GameStateTest do
         sprite: %{image: "/images/angular_final.svg", size: {100, 100}, name: :angular},
         id: "enemy-1"
       }
+
       enemy2 = %Flappy.Enemy{
         position: {600.0, 100.0, 75.0, 16.6},
         velocity: {-75.0, 0},
@@ -324,10 +362,11 @@ defmodule Flappy.GameStateTest do
       state = %{state | player: player, difficulty_score: 6}
 
       # Run many times to statistically verify generation happens
-      results = for _ <- 1..100 do
-        new_state = GameState.score_tick(state)
-        length(new_state.enemies)
-      end
+      results =
+        for _ <- 1..100 do
+          new_state = GameState.score_tick(state)
+          length(new_state.enemies)
+        end
 
       # At least some runs should have generated an enemy
       assert Enum.any?(results, &(&1 > 0)), "enemies should be generated on even score ticks"

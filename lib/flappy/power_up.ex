@@ -64,7 +64,10 @@ defmodule Flappy.PowerUp do
         {x_percent, y_percent} = Position.get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
 
         {w, h} = power_up.sprite.size
-        hitbox = Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, power_up.sprite.name)
+
+        hitbox =
+          Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, power_up.sprite.name)
+
         %{power_up | position: {new_x, new_y, x_percent, y_percent}, hitbox: hitbox}
       end)
       |> Enum.reject(fn power_up ->

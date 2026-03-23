@@ -8,12 +8,15 @@ defmodule FlappyWeb.FlappyLiveScores do
     ~H"""
     <div class="overflow-y-auto">
       <h1 class="text-cyan-100 text-9xl ">High Scores</h1>
+
       <div class="flex flex-row justify-between">
         <.back navigate={~p"/"}>
           <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Back to Game</p>
         </.back>
+
         <div>
           <h1 class="text-cyan-100">Version</h1>
+
           <.simple_form for={@form} phx-change="version_selected">
             <.input
               class="w-2/12"
@@ -25,11 +28,13 @@ defmodule FlappyWeb.FlappyLiveScores do
           </.simple_form>
         </div>
       </div>
+
       <div class="scrollable-content">
         <.table id="players" rows={@players}>
           <:col :let={player} label="Name">
             <p class="text-cyan-100">{player.name}</p>
           </:col>
+
           <:col :let={player} label="Score">
             <p class="text-cyan-100">{player.score}</p>
           </:col>

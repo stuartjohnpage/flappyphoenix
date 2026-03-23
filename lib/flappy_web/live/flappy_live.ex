@@ -33,12 +33,14 @@ defmodule FlappyWeb.FlappyLive do
                   <p class="text-white text-2xl text-center">REACT-ive armour</p>
                 </li>
               </div>
+
               <div class="flex flex-row">
                 <img src="/images/laser.svg" class="w-7 h-7" />
                 <li>
                   <p class="text-white text-2xl text-center">The ELIXIR of LASER - Space to FIRE!</p>
                 </li>
               </div>
+
               <div class="flex flex-row">
                 <img src="/images/bomb.svg" class="w-7 h-7" />
                 <li>
@@ -66,6 +68,7 @@ defmodule FlappyWeb.FlappyLive do
             <p class="text-4xl text-white">Play</p>
           </.button>
         </.simple_form>
+
         <p class="text-white text-2xl text-center">
           Oh, and don't let those other frameworks touch you!
         </p>
@@ -81,6 +84,7 @@ defmodule FlappyWeb.FlappyLive do
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
         </.button>
+
         <.back navigate={~p"/highscores"}>
           <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Highscores</p>
         </.back>
@@ -145,12 +149,14 @@ defmodule FlappyWeb.FlappyLive do
       <div class="fixed bottom-2 left-2 ml-2 w-60 z-50 rounded-lg p-3 text-sky-400">
         <div :if={@game_started}>
           <h3 class="font-bold mb-2">High Scores</h3>
+
           <ul>
             <%= for {name, score} <- @current_high_scores do %>
               <li>{name}: {score}</li>
             <% end %>
           </ul>
         </div>
+
         <div>
           <.back :if={!@game_started} navigate={~p"/highscores"}>
             <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Highscores</p>

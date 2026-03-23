@@ -58,7 +58,8 @@ defmodule Flappy.MixProject do
       {:ecto, "~> 3.10"},
       {:postgrex, "~> 0.19.1"},
       {:ecto_sql, "~> 3.12"},
-      {:expletive, "~> 0.1.0"}
+      {:expletive, "~> 0.1.0"},
+      {:tidewave, "~> 0.5", only: :dev}
     ]
   end
 

@@ -160,7 +160,12 @@ defmodule Flappy.FlappyEngine do
         calculate_score_and_update_view(state)
 
       {:ok, state} ->
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, strip_hitboxes(state)})
+        Phoenix.PubSub.broadcast(
+          Flappy.PubSub,
+          "flappy:game_state:#{game_id}",
+          {:game_state_update, strip_hitboxes(state)}
+        )
+
         {:noreply, state}
     end
   end
@@ -187,10 +192,11 @@ defmodule Flappy.FlappyEngine do
   end
 
   defp strip_hitboxes(state) do
-    %{state |
-      enemies: Enum.map(state.enemies, &%{&1 | hitbox: nil}),
-      power_ups: Enum.map(state.power_ups, &%{&1 | hitbox: nil}),
-      player: Map.put(state.player, :hitbox, nil)
+    %{
+      state
+      | enemies: Enum.map(state.enemies, &%{&1 | hitbox: nil}),
+        power_ups: Enum.map(state.power_ups, &%{&1 | hitbox: nil}),
+        player: Map.put(state.player, :hitbox, nil)
     }
   end
 
