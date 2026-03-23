@@ -160,7 +160,7 @@ defmodule Flappy.FlappyEngine do
         calculate_score_and_update_view(state)
 
       {:ok, state} ->
-        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
+        Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, strip_hitboxes(state)})
         {:noreply, state}
     end
   end
@@ -176,12 +176,22 @@ defmodule Flappy.FlappyEngine do
     Players.update_player(player, %{score: player.score})
     high_score? = Enum.any?(current_high_scores, fn {_name, score} -> player.score > score end)
 
-    if high_score?,
-      do: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:high_score, state}),
-      else: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, state})
+    broadcast_state = strip_hitboxes(state)
 
-    Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
+    if high_score?,
+      do: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:high_score, broadcast_state}),
+      else: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, broadcast_state})
+
+    Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, broadcast_state})
     {:noreply, state}
+  end
+
+  defp strip_hitboxes(state) do
+    %{state |
+      enemies: Enum.map(state.enemies, &%{&1 | hitbox: nil}),
+      power_ups: Enum.map(state.power_ups, &%{&1 | hitbox: nil}),
+      player: Map.put(state.player, :hitbox, nil)
+    }
   end
 
   ### PUBLIC API
