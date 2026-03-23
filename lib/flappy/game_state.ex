@@ -1,7 +1,7 @@
 defmodule Flappy.GameState do
   @moduledoc """
-  Pure game logic extracted from FlappyEngine.
-  All functions are side-effect free — no GenServer, no PubSub, no DB.
+  Encapsulated game logic extracted from FlappyEngine.
+  All functions have no external side effects — no GenServer, no PubSub, no DB I/O.
   """
 
   alias Flappy.Enemy
@@ -32,7 +32,7 @@ defmodule Flappy.GameState do
       |> Enemy.remove_hit_enemies(enemies_hit_by_beam ++ enemies_hit_by_player)
       |> PowerUp.grant_power_ups(power_ups_hit)
 
-    collision? = length(enemies_hit_by_player) > 0 && !state.player.invincibility
+    collision? = enemies_hit_by_player != [] && !state.player.invincibility
 
     if collision? || out_of_bounds?(state) do
       {:game_over, %{state | game_over: true}}

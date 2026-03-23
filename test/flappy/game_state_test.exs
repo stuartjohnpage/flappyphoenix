@@ -70,7 +70,8 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      [updated_enemy] = new_state.enemies
+      updated_enemy = Enum.find(new_state.enemies, &(&1.id == "enemy-1"))
+      assert updated_enemy, "original enemy should still be present"
       {new_x, _y, _xp, _yp} = updated_enemy.position
       assert new_x < 400.0, "enemy should move left"
     end
@@ -93,8 +94,10 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      assert length(new_state.enemies) == 1
-      assert hd(new_state.enemies).id == "enemy-onscreen"
+      # off-screen enemy should be removed, regardless of any newly spawned enemies
+      refute Enum.any?(new_state.enemies, &(&1.id == "enemy-offscreen"))
+      # original on-screen enemy should still be present
+      assert Enum.any?(new_state.enemies, &(&1.id == "enemy-onscreen"))
     end
   end
 
@@ -147,8 +150,8 @@ defmodule Flappy.GameStateTest do
 
       assert {:ok, new_state} = GameState.tick(state)
       assert new_state.game_over == false
-      # Enemy should be destroyed (removed and turned into explosion)
-      assert new_state.enemies == []
+      # Original enemy should be destroyed; new enemies may spawn during tick
+      refute Enum.any?(new_state.enemies, &(&1.id == "enemy-collide"))
       assert length(new_state.explosions) > 0
     end
   end
@@ -217,8 +220,8 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      # Enemy should be destroyed by laser
-      assert new_state.enemies == []
+      # Target enemy should be destroyed by laser; new enemies may spawn during tick
+      refute Enum.any?(new_state.enemies, &(&1.id == "enemy-laser-target"))
       assert length(new_state.explosions) > 0
     end
   end
@@ -237,7 +240,7 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      assert new_state.power_ups == []
+      refute Enum.any?(new_state.power_ups, &(&1.id == "powerup-1"))
       assert new_state.player.invincibility == true
       assert {:invincibility, _duration} = List.keyfind(new_state.player.granted_powers, :invincibility, 0)
     end
@@ -272,8 +275,9 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
-      # Bomb should destroy all enemies
-      assert new_state.enemies == []
+      # Bomb should destroy the original enemies; new enemies may spawn during tick
+      refute Enum.any?(new_state.enemies, &(&1.id == "enemy-1"))
+      refute Enum.any?(new_state.enemies, &(&1.id == "enemy-2"))
       # Should have explosion from the bomb
       assert length(new_state.explosions) > 0
       # Score should increase by enemies_killed * score_multiplier
