@@ -94,7 +94,7 @@ defmodule Flappy.PowerUp do
       derive_power_flags(granted_powers)
 
     {bomb_hit?, explosions} =
-      Enum.reduce(power_ups_hit, {false, state.explosions}, fn power_up, {_bomb_hit, explosions} ->
+      Enum.reduce(power_ups_hit, {false, state.explosions}, fn power_up, {bomb_hit, explosions} ->
         if power_up.sprite.name == :bomb do
           new_explosion = %Explosion{
             duration: 3,
@@ -106,7 +106,7 @@ defmodule Flappy.PowerUp do
 
           {true, [new_explosion | explosions]}
         else
-          {false, explosions}
+          {bomb_hit, explosions}
         end
       end)
 
