@@ -19,7 +19,7 @@ defmodule Flappy.FlappyEngine do
 
   alias Flappy.Enemy
   alias Flappy.Explosion
-  alias Flappy.Hitbox
+  alias Flappy.GameState
   alias Flappy.Players
   alias Flappy.Players.Player
   alias Flappy.PowerUp
@@ -154,81 +154,19 @@ defmodule Flappy.FlappyEngine do
   end
 
   @impl true
-  def handle_info(
-        :game_tick,
-        %{
-          game_id: game_id,
-          game_height: game_height,
-          game_width: game_width,
-          player: %{sprite: %{size: {player_length, player_height}}} = player
-        } = state
-      ) do
-    state =
-      state
-      |> Player.update_player()
-      |> Enemy.update_enemies()
-      |> PowerUp.update_power_ups()
-      |> Explosion.update_explosions()
-
-    {_x_pos, _y_pos, x_pos, y_pos} = player.position
-
-    enemies_hit_by_player =
-      Hitbox.check_for_enemy_collisions?(state)
-
-    enemies_hit_by_beam =
-      if state.player.laser_beam,
-        do: Hitbox.get_hit_enemies(state.enemies, state),
-        else: []
-
-    power_ups_hit = Hitbox.get_hit_power_ups(state.power_ups, state)
-
-    state =
-      state
-      |> Enemy.remove_hit_enemies(enemies_hit_by_beam ++ enemies_hit_by_player)
-      |> PowerUp.grant_power_ups(power_ups_hit)
-
-    collision? = if length(enemies_hit_by_player) > 0 && !state.player.invincibility, do: true, else: false
-
-    cond do
-      collision? ->
+  def handle_info(:game_tick, %{game_id: game_id} = state) do
+    case GameState.tick(state) do
+      {:game_over, state} ->
         calculate_score_and_update_view(state)
 
-      y_pos < 0 ->
-        calculate_score_and_update_view(state)
-
-      y_pos > 100 - get_percentage(game_height, player_height) ->
-        calculate_score_and_update_view(state)
-
-      x_pos < 0 - get_percentage(game_width, player_length) ->
-        calculate_score_and_update_view(state)
-
-      x_pos > 100 ->
-        calculate_score_and_update_view(state)
-
-      true ->
+      {:ok, state} ->
         Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
         {:noreply, state}
     end
   end
 
-  def handle_info(:score_tick, %{player: player} = state) do
-    granted_powers =
-      player.granted_powers
-      |> Enum.uniq_by(fn {power, _duration} ->
-        power
-      end)
-      |> Enum.map(fn
-        {_power, 0} -> nil
-        {power, duration_left} -> {power, duration_left - 1}
-      end)
-      |> Enum.reject(&is_nil/1)
-
-    player = %{player | score: player.score + 1, granted_powers: granted_powers}
-    state = %{state | player: player}
-    state = if rem(player.score, 2) == 0, do: %{state | enemies: Enemy.maybe_generate_enemy(state)}, else: state
-    state = if rem(player.score, 10) == 0, do: %{state | power_ups: PowerUp.generate_power_up(state)}, else: state
-
-    {:noreply, state}
+  def handle_info(:score_tick, state) do
+    {:noreply, GameState.score_tick(state)}
   end
 
   defp calculate_score_and_update_view(
@@ -244,10 +182,6 @@ defmodule Flappy.FlappyEngine do
 
     Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, state})
     {:noreply, state}
-  end
-
-  defp get_percentage(whole, part) do
-    part / whole * 100
   end
 
   ### PUBLIC API
