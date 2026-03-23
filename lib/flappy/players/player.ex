@@ -7,6 +7,7 @@ defmodule Flappy.Players.Player do
   use Ecto.Schema
 
   alias Ecto.Changeset
+  alias Flappy.Hitbox
   alias Flappy.Position
 
   @type t :: %__MODULE__{}
@@ -25,6 +26,7 @@ defmodule Flappy.Players.Player do
     field(:laser_beam, :boolean, virtual: true)
     field(:laser_duration, :integer, virtual: true)
     field(:invincibility, :boolean, virtual: true)
+    field(:hitbox, :any, virtual: true)
   end
 
   def changeset(player, params \\ %{}) do
@@ -46,13 +48,18 @@ defmodule Flappy.Players.Player do
 
     {x_percent, y_percent} = Position.get_percentage_position({new_x_position, new_y_position}, game_width, game_height)
 
-    player = %{
+    {sprite_w, sprite_h} = player.sprite.size
+    hitbox = Hitbox.player_hitbox(x_percent, y_percent, sprite_w, sprite_h, game_width, game_height)
+
+    player =
       player
-      | position: {new_x_position, new_y_position, x_percent, y_percent},
+      |> Map.merge(%{
+        position: {new_x_position, new_y_position, x_percent, y_percent},
         velocity: {x_velocity, new_y_velocity},
         laser_beam: laser_on?,
-        laser_duration: laser_duration
-    }
+        laser_duration: laser_duration,
+        hitbox: hitbox
+      })
 
     %{state | player: player}
   end

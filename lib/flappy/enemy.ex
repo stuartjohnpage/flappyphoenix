@@ -5,9 +5,10 @@ defmodule Flappy.Enemy do
   The position is a tuple of x and y coordinates, and the velocity is a tuple of x and y velocities.
   """
   alias Flappy.Explosion
+  alias Flappy.Hitbox
   alias Flappy.Position
 
-  defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: ""
+  defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: "", hitbox: nil
 
   @enemy_limit 300
 
@@ -61,7 +62,9 @@ defmodule Flappy.Enemy do
 
         {x_percent, y_percent} = Position.get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
 
-        %{enemy | position: {new_x, new_y, x_percent, y_percent}}
+        {w, h} = enemy.sprite.size
+        hitbox = Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, enemy.sprite.name)
+        %{enemy | position: {new_x, new_y, x_percent, y_percent}, hitbox: hitbox}
       end)
       |> Enum.reject(fn enemy ->
         {x, _y, _, _} = enemy.position
