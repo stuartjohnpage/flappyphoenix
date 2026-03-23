@@ -51,7 +51,19 @@ defmodule Flappy.GameState do
       end)
       |> Enum.reject(&is_nil/1)
 
-    player = %{player | score: player.score + 1, granted_powers: granted_powers}
+    %{laser_allowed: laser_allowed, invincibility: invincibility, sprite: sprite} =
+      PowerUp.derive_power_flags(granted_powers)
+
+    player =
+      player
+      |> Map.merge(%{
+        score: player.score + 1,
+        granted_powers: granted_powers,
+        laser_allowed: laser_allowed,
+        invincibility: invincibility,
+        sprite: sprite
+      })
+
     state = %{state | player: player}
     state = if rem(player.score, 2) == 0, do: %{state | enemies: Enemy.maybe_generate_enemy(state)}, else: state
     state = if rem(player.score, 10) == 0, do: %{state | power_ups: PowerUp.generate_power_up(state)}, else: state
