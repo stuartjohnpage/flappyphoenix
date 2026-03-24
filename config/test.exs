@@ -1,5 +1,13 @@
 import Config
 
+# Configure the test database
+config :flappy, Flappy.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "flappy_repo_test",
+  pool: Ecto.Adapters.SQL.Sandbox
+
 # In test we don't send emails
 config :flappy, Flappy.Mailer, adapter: Swoosh.Adapters.Test
 
