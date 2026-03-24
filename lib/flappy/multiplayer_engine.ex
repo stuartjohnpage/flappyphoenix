@@ -45,16 +45,30 @@ defmodule Flappy.MultiplayerEngine do
 
   @impl true
   def init(:ok) do
+    Process.put(:pid_to_player, %{})
     {:ok, fresh_state()}
   end
 
   @impl true
-  def handle_call({:join, player_id, player_name}, _from, state) do
+  def handle_call({:join, player_id, player_name}, {caller_pid, _tag}, state) do
+    pid_map = Process.get(:pid_to_player, %{})
+
+    # Clean up any existing player for this LiveView process (handles rejoin)
+    state =
+      case Map.get(pid_map, caller_pid) do
+        nil -> state
+        old_player_id ->
+          Process.put(:pid_to_player, Map.delete(pid_map, caller_pid))
+          do_leave(state, old_player_id)
+      end
+
+    # Monitor the LiveView process for automatic cleanup on disconnect
+    Process.monitor(caller_pid)
+
     needs_fresh_start = map_size(state.players) == 0 || state.game_over
 
     state =
       if needs_fresh_start do
-        # First player or game_over: fresh state + start timers
         stop_timers(state)
         state = fresh_state()
         state = GameState.add_player(state, player_id, player_name)
@@ -63,6 +77,9 @@ defmodule Flappy.MultiplayerEngine do
       else
         GameState.add_player(state, player_id, player_name)
       end
+
+    # Track pid → player_id mapping
+    Process.put(:pid_to_player, Map.put(Process.get(:pid_to_player, %{}), caller_pid, player_id))
 
     {:reply, :ok, state}
   end
@@ -73,27 +90,12 @@ defmodule Flappy.MultiplayerEngine do
 
   @impl true
   def handle_cast({:leave, player_id}, state) do
-    player = state.players[player_id]
+    # Clean up pid → player mapping
+    pid_map = Process.get(:pid_to_player, %{})
+    pid_map = pid_map |> Enum.reject(fn {_pid, id} -> id == player_id end) |> Map.new()
+    Process.put(:pid_to_player, pid_map)
 
-    # Save survival time if player was alive
-    if player && Map.get(player, :alive, true) do
-      save_score(player, state)
-    end
-
-    state = GameState.remove_player(state, player_id)
-
-    broadcast(state)
-
-    # If no players left, stop timers and reset
-    state =
-      if map_size(state.players) == 0 do
-        stop_timers(state)
-        fresh_state()
-      else
-        state
-      end
-
-    {:noreply, state}
+    {:noreply, do_leave(state, player_id)}
   end
 
   def handle_cast({:input, player_id, action}, state) do
@@ -138,6 +140,19 @@ defmodule Flappy.MultiplayerEngine do
       {:noreply, state}
     else
       {:noreply, GameState.score_tick(state)}
+    end
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
+    pid_map = Process.get(:pid_to_player, %{})
+
+    case Map.pop(pid_map, pid) do
+      {nil, _} ->
+        {:noreply, state}
+
+      {player_id, new_pid_map} ->
+        Process.put(:pid_to_player, new_pid_map)
+        {:noreply, do_leave(state, player_id)}
     end
   end
 
@@ -195,15 +210,12 @@ defmodule Flappy.MultiplayerEngine do
     end)
   end
 
-  # On game_over, only save players NOT already in deaths_this_tick
-  # (those were already saved by handle_deaths in prior ticks)
+  # On game_over, save scores only for players who died in the final tick.
+  # Players who died in earlier ticks were already saved by handle_deaths.
   defp save_unsaved_scores(state) do
-    already_saved = MapSet.new(state.deaths_this_tick)
-
-    Enum.each(state.players, fn {player_id, player} ->
-      unless MapSet.member?(already_saved, player_id) do
-        save_score(player, state)
-      end
+    Enum.each(state.deaths_this_tick, fn player_id ->
+      player = state.players[player_id]
+      if player, do: save_score(player, state)
     end)
   end
 
@@ -215,6 +227,26 @@ defmodule Flappy.MultiplayerEngine do
         {:ok, _} -> :ok
         {:error, reason} -> Logger.error("Failed to save multiplayer score: #{inspect(reason)}")
       end
+    end
+  end
+
+  defp do_leave(state, player_id) do
+    player = state.players[player_id]
+
+    if player do
+      if Map.get(player, :alive, true), do: save_score(player, state)
+
+      state = GameState.remove_player(state, player_id)
+      broadcast(state)
+
+      if map_size(state.players) == 0 do
+        stop_timers(state)
+        fresh_state()
+      else
+        state
+      end
+    else
+      state
     end
   end
 end
