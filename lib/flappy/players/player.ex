@@ -36,13 +36,26 @@ defmodule Flappy.Players.Player do
     |> Changeset.validate_required([:name, :score, :version])
   end
 
-  def update_player(%{player: player, gravity: gravity, game_width: game_width, game_height: game_height} = state) do
+  def update_players(%{players: players, gravity: gravity, game_width: game_width, game_height: game_height} = state) do
+    updated_players =
+      Map.new(players, fn {player_id, player} ->
+        if Map.get(player, :alive, true) do
+          {player_id, update_single_player(player, gravity, game_width, game_height, state.game_tick_interval)}
+        else
+          {player_id, player}
+        end
+      end)
+
+    %{state | players: updated_players}
+  end
+
+  defp update_single_player(player, gravity, game_width, game_height, game_tick_interval) do
     {x_position, y_position, _x_percent, _y_percent} = player.position
     {x_velocity, y_velocity} = player.velocity
 
-    new_y_velocity = Float.floor(y_velocity + gravity * (state.game_tick_interval / 1000), 2)
-    new_y_position = Float.floor(y_position + new_y_velocity * (state.game_tick_interval / 1000), 2)
-    new_x_position = Float.floor(x_position + x_velocity * (state.game_tick_interval / 1000), 2)
+    new_y_velocity = Float.floor(y_velocity + gravity * (game_tick_interval / 1000), 2)
+    new_y_position = Float.floor(y_position + new_y_velocity * (game_tick_interval / 1000), 2)
+    new_x_position = Float.floor(x_position + x_velocity * (game_tick_interval / 1000), 2)
     laser_on? = player.laser_duration > 0
     laser_duration = if laser_on?, do: player.laser_duration - 1, else: 0
 
@@ -51,15 +64,12 @@ defmodule Flappy.Players.Player do
     {sprite_w, sprite_h} = player.sprite.size
     hitbox = Hitbox.player_hitbox(x_percent, y_percent, sprite_w, sprite_h, game_width, game_height)
 
-    player =
-      Map.merge(player, %{
-        position: {new_x_position, new_y_position, x_percent, y_percent},
-        velocity: {x_velocity, new_y_velocity},
-        laser_beam: laser_on?,
-        laser_duration: laser_duration,
-        hitbox: hitbox
-      })
-
-    %{state | player: player}
+    Map.merge(player, %{
+      position: {new_x_position, new_y_position, x_percent, y_percent},
+      velocity: {x_velocity, new_y_velocity},
+      laser_beam: laser_on?,
+      laser_duration: laser_duration,
+      hitbox: hitbox
+    })
   end
 end

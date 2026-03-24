@@ -65,9 +65,15 @@ defmodule FlappyWeb.FlappyLive do
             />
           </div>
 
-          <.button type="submit" class="bg-blue-500 rounded">
-            <p class="text-4xl text-white">Play</p>
-          </.button>
+          <div class="flex flex-row gap-4">
+            <.button type="submit" class="bg-blue-500 rounded">
+              <p class="text-4xl text-white">Singleplayer</p>
+            </.button>
+
+            <.button type="button" class="bg-purple-600 rounded" phx-click="go_multiplayer">
+              <p class="text-4xl text-white">Multiplayer</p>
+            </.button>
+          </div>
         </.simple_form>
 
         <p class="text-white text-2xl text-center">
@@ -76,11 +82,11 @@ defmodule FlappyWeb.FlappyLive do
       </div>
       <%!-- Score container --%>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
-        <p :if={@game_state.player.score != 69} class="text-white text-4xl z-50">
+        <p :if={get_player_field(@game_state, :score) != 69} class="text-white text-4xl z-50">
           YOU LOSE! I SAY GOOD DAY SIR!
         </p>
         <br />
-        <p class="text-white text-4xl z-50">Your final score was {@game_state.player.score}</p>
+        <p class="text-white text-4xl z-50">Your final score was {get_player_field(@game_state, :score)}</p>
 
         <.button phx-click="play_again" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 z-50">
           <p class="p-4 text-4xl text-white">Play Again?</p>
@@ -95,27 +101,30 @@ defmodule FlappyWeb.FlappyLive do
         id="score-container"
         class=" z-50 absolute top-0 left-0 ml-11 mt-11 bg-black rounded-md p-2"
       >
-        <p class="text-white text-4xl">Score: {@game_state.player.score}</p>
+        <p class="text-white text-4xl">Score: {get_player_field(@game_state, :score)}</p>
       </div>
       <%!-- Game Area --%>
       <div id="game-area" phx-hook="ResizeHook" class="game-area w-screen h-screen -z-0">
         <%!-- Player --%>
-        <div
-          :if={@game_started && !@game_state.game_over}
-          id="bird-container"
-          phx-window-keydown="player_action"
-          style={"position: absolute; left: #{elem(@game_state.player.position, 2)}%; top: #{elem(@game_state.player.position, 3)}%; "}
-        >
-          <img src={@game_state.player.sprite.image} class={@sprite_class} />
-        </div>
+        <%= if @game_started && !@game_state.game_over do %>
+          <% player = get_player(@game_state) %>
+          <div
+            :if={player}
+            id="bird-container"
+            phx-window-keydown="player_action"
+            style={"position: absolute; left: #{elem(player.position, 2)}%; top: #{elem(player.position, 3)}%; "}
+          >
+            <img src={player.sprite.image} class={@sprite_class} />
+          </div>
 
-        <div
-          :if={@game_state.player.laser_beam && !@game_state.game_over}
-          id="laser-beam"
-          class="absolute bg-red-900 h-1 rounded-md"
-          style={"left: #{Position.bird_x_eye_position(@game_state)}%; top: #{Position.bird_y_eye_position(@game_state)}%; width: #{100 - elem(@game_state.player.position, 2)}%;"}
-        >
-        </div>
+          <div
+            :if={player && player.laser_beam && !@game_state.game_over}
+            id="laser-beam"
+            class="absolute bg-red-900 h-1 rounded-md"
+            style={"left: #{Position.bird_x_eye_position(player, @game_state.game_width)}%; top: #{Position.bird_y_eye_position(player, @game_state.game_height)}%; width: #{100 - elem(player.position, 2)}%;"}
+          >
+          </div>
+        <% end %>
         <%!-- Enemies --%>
         <%= for %{position: {_, _, x_pos, y_pos}} = enemy <- @game_state.enemies do %>
           <div
@@ -192,6 +201,10 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:current_high_scores, [])
      |> assign(:game_state, %GameState{})
      |> assign(:game_height, game_height)}
+  end
+
+  def handle_event("go_multiplayer", _, socket) do
+    {:noreply, push_navigate(socket, to: ~p"/multiplayer")}
   end
 
   def handle_event(
@@ -275,7 +288,8 @@ defmodule FlappyWeb.FlappyLive do
     end
   end
 
-  def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket) do
+  def handle_info({:game_state_update, game_state}, %{assigns: %{engine_pid: engine_pid}} = socket)
+      when is_pid(engine_pid) do
     if game_state.game_over do
       if Process.alive?(engine_pid) do
         FlappyEngine.stop_engine(engine_pid)
@@ -283,7 +297,12 @@ defmodule FlappyWeb.FlappyLive do
 
       {:noreply, assign(socket, :game_state, %{game_state | game_over: true})}
     else
-      sprite_class = if game_state.player.laser_allowed, do: "filter drop-shadow-[0_5px_10px_rgba(255,0,0,0.7)]", else: ""
+      player = get_player(game_state)
+
+      sprite_class =
+        if player && player.laser_allowed,
+          do: "filter drop-shadow-[0_5px_10px_rgba(255,0,0,0.7)]",
+          else: ""
 
       {:noreply, socket |> assign(:sprite_class, sprite_class) |> assign(:game_state, game_state)}
     end
@@ -294,9 +313,14 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_info(
-        {:high_score, %{player: %{name: player_name, score: score}}},
+        {:high_score, game_state},
         %{assigns: %{messages: existing_messages, current_high_scores: current_high_scores}} = socket
       ) do
+    # Get player info from the first player in the state
+    player = get_player(game_state)
+    player_name = player.name
+    score = player.score
+
     new_high_scores =
       [{player_name, score} | current_high_scores]
       |> Enum.sort_by(fn {_, score} -> score end, :desc)
@@ -320,9 +344,13 @@ defmodule FlappyWeb.FlappyLive do
   end
 
   def handle_info(
-        {:new_score, %{player: %{name: player_name, score: score}}},
+        {:new_score, game_state},
         %{assigns: %{messages: existing_messages}} = socket
       ) do
+    player = get_player(game_state)
+    player_name = player.name
+    score = player.score
+
     mean_message =
       cond do
         score < 50 ->
@@ -341,7 +369,7 @@ defmodule FlappyWeb.FlappyLive do
 
         true ->
           Enum.random([
-            "I’ve seen rocks with better reflexes!",
+            "I've seen rocks with better reflexes!",
             "A Phoenix should rise… not crash and burn!",
             "Not every bird is meant to soar, I guess."
           ])
@@ -379,6 +407,19 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:engine_pid, engine_pid)
      |> assign(:game_state, game_state)
      |> assign(:game_started, true)}
+  end
+
+  # Helper to get the first (singleplayer) player from the players map
+  defp get_player(%{players: players}) when map_size(players) > 0 do
+    {_id, player} = Enum.at(players, 0)
+    player
+  end
+
+  defp get_player(_), do: %{position: {0, 0, 0, 0}, velocity: {0.0, 0.0}, sprite: %{image: "", size: {0, 0}, name: :default}, score: 0, laser_beam: false, laser_allowed: false, alive: true, name: ""}
+
+  defp get_player_field(game_state, field) do
+    player = get_player(game_state)
+    Map.get(player, field, 0)
   end
 
   ### Used to generate z index between 1 and 50

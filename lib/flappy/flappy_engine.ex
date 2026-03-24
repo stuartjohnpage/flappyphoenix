@@ -19,83 +19,97 @@ defmodule Flappy.FlappyEngine do
         player_name: player_name,
         zoom_level: zoom_level
       }) do
-    player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
+    player_id = Ecto.UUID.generate()
+    db_player = Players.create_player!(%{name: player_name, score: @start_score, version: get_game_version()})
     current_game_version = Application.get_env(:flappy, :game_version, "1")
     current_high_scores = Players.get_current_high_scores(5, current_game_version)
 
-    state =
+    game_state =
       GameState.new(
         game_id: game_id,
+        player_id: player_id,
         game_height: game_height,
         game_width: game_width,
         zoom_level: zoom_level,
         gravity: 175 / zoom_level,
         current_high_scores: current_high_scores,
         player: %{
-          Map.from_struct(player)
-          | position: {100, game_height / 2, 10, 50},
-            velocity: {0, 0},
-            sprite: Players.get_sprite(),
-            granted_powers: [],
-            laser_allowed: false,
-            laser_beam: false,
-            laser_duration: 0,
-            invincibility: false
+          position: {100, game_height / 2, 10, 50},
+          velocity: {0, 0},
+          sprite: Players.get_sprite(),
+          granted_powers: [],
+          laser_allowed: false,
+          laser_beam: false,
+          laser_duration: 0,
+          invincibility: false,
+          name: player_name
         }
       )
 
+    state = %{
+      game_state: game_state,
+      player_id: player_id,
+      db_player: db_player
+    }
+
     # Start the periodic update
-    :timer.send_interval(state.game_tick_interval, self(), :game_tick)
-    :timer.send_interval(state.score_tick_interval, self(), :score_tick)
+    :timer.send_interval(game_state.game_tick_interval, self(), :game_tick)
+    :timer.send_interval(game_state.score_tick_interval, self(), :score_tick)
     {:ok, state}
   end
 
   @impl true
-  def handle_cast(input, state) do
-    {:noreply, GameState.handle_input(state, input)}
+  def handle_cast({:update_viewport, zoom_level, game_width, game_height}, %{game_state: gs, player_id: pid} = state) do
+    {:noreply, %{state | game_state: GameState.handle_input(gs, pid, {:update_viewport, zoom_level, game_width, game_height})}}
+  end
+
+  def handle_cast(input, %{game_state: gs, player_id: pid} = state) do
+    {:noreply, %{state | game_state: GameState.handle_input(gs, pid, input)}}
   end
 
   @impl true
-  def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
+  def handle_call(:get_state, _from, %{game_state: gs} = state) do
+    {:reply, gs, state}
   end
 
   @impl true
-  def handle_info(:game_tick, %{game_id: game_id} = state) do
-    case GameState.tick(state) do
-      {:game_over, state} ->
-        calculate_score_and_update_view(state)
+  def handle_info(:game_tick, %{game_state: gs} = state) do
+    case GameState.tick(gs) do
+      {:game_over, gs} ->
+        calculate_score_and_update_view(%{state | game_state: gs})
 
-      {:ok, state} ->
+      {:ok, gs} ->
         Phoenix.PubSub.broadcast(
           Flappy.PubSub,
-          "flappy:game_state:#{game_id}",
-          {:game_state_update, GameState.strip_hitboxes(state)}
+          "flappy:game_state:#{gs.game_id}",
+          {:game_state_update, GameState.strip_hitboxes(gs)}
         )
 
-        {:noreply, state}
+        {:noreply, %{state | game_state: gs}}
     end
   end
 
-  def handle_info(:score_tick, state) do
-    {:noreply, GameState.score_tick(state)}
+  def handle_info(:score_tick, %{game_state: gs} = state) do
+    {:noreply, %{state | game_state: GameState.score_tick(gs)}}
   end
 
-  defp calculate_score_and_update_view(
-         %{player: player, game_id: game_id, current_high_scores: current_high_scores} = state
-       ) do
-    state = %{state | game_over: true}
-    Players.update_player(player, %{score: player.score})
+  defp calculate_score_and_update_view(%{game_state: gs, player_id: player_id, db_player: db_player} = state) do
+    player = gs.players[player_id]
+    game_id = gs.game_id
+    current_high_scores = gs.current_high_scores
+
+    gs = %{gs | game_over: true}
+    Players.update_player(db_player, %{score: player.score})
     high_score? = Enum.any?(current_high_scores, fn {_name, score} -> player.score > score end)
 
-    broadcast_state = GameState.strip_hitboxes(state)
+    broadcast_state = GameState.strip_hitboxes(gs)
 
     if high_score?,
       do: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:high_score, broadcast_state}),
       else: Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:global", {:new_score, broadcast_state})
 
     Phoenix.PubSub.broadcast(Flappy.PubSub, "flappy:game_state:#{game_id}", {:game_state_update, broadcast_state})
-    {:noreply, state}
+    {:noreply, %{state | game_state: gs}}
   end
 
   ### PUBLIC API

@@ -8,18 +8,18 @@ defmodule Flappy.Hitbox do
   """
   alias Flappy.Position
 
-  def get_hit_enemies(enemies, game_state) do
-    laser_hitbox = laser_hitbox(game_state)
+  def get_hit_enemies(enemies, player, game_state) do
+    laser_hitbox = laser_hitbox(player, game_state)
 
     detect_multiple_hits(enemies, laser_hitbox, game_state)
   end
 
-  def get_hit_power_ups(power_ups, %{player: player} = state) do
+  def get_hit_power_ups(power_ups, player, state) do
     p_hitbox = get_or_compute_player_hitbox(player, state)
     detect_multiple_hits(power_ups, p_hitbox, state)
   end
 
-  def check_for_enemy_collisions?(%{player: player, enemies: enemies} = state) do
+  def check_for_enemy_collisions(player, enemies, state) do
     p_hitbox = get_or_compute_player_hitbox(player, state)
     detect_multiple_hits(enemies, p_hitbox, state)
   end
@@ -72,9 +72,9 @@ defmodule Flappy.Hitbox do
     Polygons.Polygon.make([point_one, point_two, point_three, point_four, point_five, point_six])
   end
 
-  defp laser_hitbox(game_state) do
-    x = Position.bird_x_eye_position(game_state)
-    y = Position.bird_y_eye_position(game_state)
+  defp laser_hitbox(player, game_state) do
+    x = Position.bird_x_eye_position(player, game_state.game_width)
+    y = Position.bird_y_eye_position(player, game_state.game_height)
     w = 100
     h = 1
 

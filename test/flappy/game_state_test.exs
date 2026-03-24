@@ -3,6 +3,8 @@ defmodule Flappy.GameStateTest do
 
   alias Flappy.GameState
 
+  @player_id "test-player"
+
   describe "new/0" do
     test "creates a valid default game state struct" do
       state = GameState.new()
@@ -12,8 +14,10 @@ defmodule Flappy.GameStateTest do
       assert state.enemies == []
       assert state.power_ups == []
       assert state.explosions == []
-      assert state.player.position != nil
-      assert state.player.velocity == {0.0, 0.0}
+      assert map_size(state.players) == 1
+      player = first_player(state)
+      assert player.position != nil
+      assert player.velocity == {0.0, 0.0}
       assert state.gravity > 0
       assert state.game_height > 0
       assert state.game_width > 0
@@ -29,77 +33,80 @@ defmodule Flappy.GameStateTest do
     test "accepts player overrides merged into defaults" do
       state = GameState.new(player: %{laser_allowed: true, score: 42})
 
-      assert state.player.laser_allowed == true
-      assert state.player.score == 42
+      player = first_player(state)
+      assert player.laser_allowed == true
+      assert player.score == 42
       # defaults preserved
-      assert state.player.velocity == {0.0, 0.0}
-      assert state.player.invincibility == false
+      assert player.velocity == {0.0, 0.0}
+      assert player.invincibility == false
     end
   end
 
-  describe "handle_input/2" do
+  describe "handle_input/3" do
     test "go_up decreases y velocity (thrust upward)" do
-      state = GameState.new()
-      {_vx, initial_vy} = state.player.velocity
+      state = GameState.new(player_id: @player_id)
+      {_vx, initial_vy} = first_player(state).velocity
 
-      new_state = GameState.handle_input(state, :go_up)
+      new_state = GameState.handle_input(state, @player_id, :go_up)
 
-      {_vx, new_vy} = new_state.player.velocity
+      {_vx, new_vy} = first_player(new_state).velocity
       assert new_vy < initial_vy, "y velocity should decrease (move up)"
     end
 
     test "go_down increases y velocity (thrust downward)" do
-      state = GameState.new()
-      {_vx, initial_vy} = state.player.velocity
+      state = GameState.new(player_id: @player_id)
+      {_vx, initial_vy} = first_player(state).velocity
 
-      new_state = GameState.handle_input(state, :go_down)
+      new_state = GameState.handle_input(state, @player_id, :go_down)
 
-      {_vx, new_vy} = new_state.player.velocity
+      {_vx, new_vy} = first_player(new_state).velocity
       assert new_vy > initial_vy, "y velocity should increase (move down)"
     end
 
     test "go_right increases x velocity" do
-      state = GameState.new()
-      {initial_vx, _vy} = state.player.velocity
+      state = GameState.new(player_id: @player_id)
+      {initial_vx, _vy} = first_player(state).velocity
 
-      new_state = GameState.handle_input(state, :go_right)
+      new_state = GameState.handle_input(state, @player_id, :go_right)
 
-      {new_vx, _vy} = new_state.player.velocity
+      {new_vx, _vy} = first_player(new_state).velocity
       assert new_vx > initial_vx, "x velocity should increase (move right)"
     end
 
     test "go_left decreases x velocity" do
-      state = GameState.new()
-      {initial_vx, _vy} = state.player.velocity
+      state = GameState.new(player_id: @player_id)
+      {initial_vx, _vy} = first_player(state).velocity
 
-      new_state = GameState.handle_input(state, :go_left)
+      new_state = GameState.handle_input(state, @player_id, :go_left)
 
-      {new_vx, _vy} = new_state.player.velocity
+      {new_vx, _vy} = first_player(new_state).velocity
       assert new_vx < initial_vx, "x velocity should decrease (move left)"
     end
 
     test "fire_laser activates laser when laser_allowed" do
-      state = GameState.new(player: %{laser_allowed: true})
+      state = GameState.new(player_id: @player_id, player: %{laser_allowed: true})
 
-      new_state = GameState.handle_input(state, :fire_laser)
+      new_state = GameState.handle_input(state, @player_id, :fire_laser)
 
-      assert new_state.player.laser_beam == true
-      assert new_state.player.laser_duration == 3
+      player = first_player(new_state)
+      assert player.laser_beam == true
+      assert player.laser_duration == 3
     end
 
     test "fire_laser is a no-op when laser not allowed" do
-      state = GameState.new(player: %{laser_allowed: false})
+      state = GameState.new(player_id: @player_id, player: %{laser_allowed: false})
 
-      new_state = GameState.handle_input(state, :fire_laser)
+      new_state = GameState.handle_input(state, @player_id, :fire_laser)
 
-      assert new_state.player.laser_beam == false
-      assert new_state.player.laser_duration == 0
+      player = first_player(new_state)
+      assert player.laser_beam == false
+      assert player.laser_duration == 0
     end
 
     test "update_viewport changes dimensions and zoom" do
-      state = GameState.new()
+      state = GameState.new(player_id: @player_id)
 
-      new_state = GameState.handle_input(state, {:update_viewport, 2.0, 1920, 1080})
+      new_state = GameState.handle_input(state, @player_id, {:update_viewport, 2.0, 1920, 1080})
 
       assert new_state.zoom_level == 2.0
       assert new_state.game_width == 1920
@@ -119,21 +126,33 @@ defmodule Flappy.GameStateTest do
       score_multiplier: 10,
       difficulty_score: 400,
       game_over: false,
-      player: %{
-        position: {100.0, 300.0, 12.5, 50.0},
-        velocity: {0.0, 0.0},
-        sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
-        score: 0,
-        granted_powers: [],
-        laser_allowed: false,
-        laser_beam: false,
-        laser_duration: 0,
-        invincibility: false
+      players: %{
+        @player_id => %{
+          position: {100.0, 300.0, 12.5, 50.0},
+          velocity: {0.0, 0.0},
+          sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
+          score: 0,
+          granted_powers: [],
+          laser_allowed: false,
+          laser_beam: false,
+          laser_duration: 0,
+          invincibility: false,
+          hitbox: nil,
+          alive: true,
+          name: "Test",
+          survival_time: 0
+        }
       },
       enemies: [],
       power_ups: [],
-      explosions: []
+      explosions: [],
+      deaths_this_tick: []
     }
+  end
+
+  defp first_player(%{players: players}) do
+    {_id, player} = Enum.at(players, 0)
+    player
   end
 
   describe "tick/1 player physics" do
@@ -141,20 +160,20 @@ defmodule Flappy.GameStateTest do
       state = base_state()
       {:ok, new_state} = GameState.tick(state)
 
-      {_x_vel, y_vel} = new_state.player.velocity
+      {_x_vel, y_vel} = first_player(new_state).velocity
       # gravity=175, tick=15ms -> delta = 175 * 0.015 = 2.625
       assert y_vel > 0, "gravity should increase y velocity downward"
     end
 
     test "updates player position based on velocity" do
       state = base_state()
-      player = %{state.player | velocity: {10.0, 20.0}}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | velocity: {10.0, 20.0}}
+      state = %{state | players: %{@player_id => player}}
 
       {:ok, new_state} = GameState.tick(state)
 
-      {new_x, new_y, _xp, _yp} = new_state.player.position
-      {orig_x, orig_y, _xp, _yp} = state.player.position
+      {new_x, new_y, _xp, _yp} = first_player(new_state).position
+      {orig_x, orig_y, _xp, _yp} = player.position
 
       assert new_x > orig_x, "player should move right with positive x velocity"
       assert new_y > orig_y, "player should move down with positive y velocity"
@@ -254,7 +273,7 @@ defmodule Flappy.GameStateTest do
     test "returns game_over when player collides with enemy (no invincibility)" do
       state = base_state()
       # Place enemy right on top of player
-      {px, py, pxp, pyp} = state.player.position
+      {px, py, pxp, pyp} = state.players[@player_id].position
 
       enemy = %Flappy.Enemy{
         position: {px, py, pxp, pyp},
@@ -271,7 +290,7 @@ defmodule Flappy.GameStateTest do
 
     test "with invincibility, destroys enemies instead of game over" do
       state = base_state()
-      {px, py, pxp, pyp} = state.player.position
+      {px, py, pxp, pyp} = state.players[@player_id].position
 
       enemy = %Flappy.Enemy{
         position: {px, py, pxp, pyp},
@@ -280,8 +299,8 @@ defmodule Flappy.GameStateTest do
         id: "enemy-collide"
       }
 
-      player = %{state.player | invincibility: true, granted_powers: [{:invincibility, 5}]}
-      state = %{state | enemies: [enemy], player: player}
+      player = %{state.players[@player_id] | invincibility: true, granted_powers: [{:invincibility, 5}]}
+      state = %{state | enemies: [enemy], players: %{@player_id => player}}
 
       assert {:ok, new_state} = GameState.tick(state)
       assert new_state.game_over == false
@@ -294,8 +313,8 @@ defmodule Flappy.GameStateTest do
   describe "tick/1 out of bounds" do
     test "game over when player goes above screen" do
       state = base_state()
-      player = %{state.player | position: {100.0, -50.0, 12.5, -8.3}}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | position: {100.0, -50.0, 12.5, -8.3}}
+      state = %{state | players: %{@player_id => player}}
 
       assert {:game_over, new_state} = GameState.tick(state)
       assert new_state.game_over == true
@@ -304,8 +323,8 @@ defmodule Flappy.GameStateTest do
     test "game over when player falls below screen" do
       state = base_state()
       # y% > 100 - sprite_height_percent
-      player = %{state.player | position: {100.0, 590.0, 12.5, 98.0}}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | position: {100.0, 590.0, 12.5, 98.0}}
+      state = %{state | players: %{@player_id => player}}
 
       assert {:game_over, new_state} = GameState.tick(state)
       assert new_state.game_over == true
@@ -313,8 +332,8 @@ defmodule Flappy.GameStateTest do
 
     test "game over when player goes off right side" do
       state = base_state()
-      player = %{state.player | position: {850.0, 300.0, 106.0, 50.0}}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | position: {850.0, 300.0, 106.0, 50.0}}
+      state = %{state | players: %{@player_id => player}}
 
       assert {:game_over, new_state} = GameState.tick(state)
       assert new_state.game_over == true
@@ -324,8 +343,8 @@ defmodule Flappy.GameStateTest do
       state = base_state()
       # After tick, sprite may be resized by grant_power_ups (128px wide).
       # Threshold: 0 - 128/800*100 = -16%. Use x% well below that.
-      player = %{state.player | position: {-200.0, 300.0, -25.0, 50.0}}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | position: {-200.0, 300.0, -25.0, 50.0}}
+      state = %{state | players: %{@player_id => player}}
 
       assert {:game_over, new_state} = GameState.tick(state)
       assert new_state.game_over == true
@@ -337,7 +356,7 @@ defmodule Flappy.GameStateTest do
       state = base_state()
       # Player at left side, enemy to the right at same y-level
       player = %{
-        state.player
+        state.players[@player_id]
         | laser_beam: true,
           laser_duration: 3,
           laser_allowed: true,
@@ -346,7 +365,7 @@ defmodule Flappy.GameStateTest do
       }
 
       # Enemy at same y as player but to the right
-      {_px, py, _pxp, pyp} = state.player.position
+      {_px, py, _pxp, pyp} = player.position
 
       enemy = %Flappy.Enemy{
         position: {500.0, py, 62.5, pyp},
@@ -355,7 +374,7 @@ defmodule Flappy.GameStateTest do
         id: "enemy-laser-target"
       }
 
-      state = %{state | player: player, enemies: [enemy]}
+      state = %{state | players: %{@player_id => player}, enemies: [enemy]}
 
       {:ok, new_state} = GameState.tick(state)
 
@@ -368,7 +387,7 @@ defmodule Flappy.GameStateTest do
   describe "tick/1 power-up collection" do
     test "player collects power-up on contact and gains its effect" do
       state = base_state()
-      {px, py, pxp, pyp} = state.player.position
+      {px, py, pxp, pyp} = state.players[@player_id].position
 
       power_up = %Flappy.PowerUp{
         position: {px, py, pxp, pyp},
@@ -381,14 +400,15 @@ defmodule Flappy.GameStateTest do
 
       {:ok, new_state} = GameState.tick(state)
 
+      player = first_player(new_state)
       refute Enum.any?(new_state.power_ups, &(&1.id == "powerup-1"))
-      assert new_state.player.invincibility == true
-      assert {:invincibility, _duration} = List.keyfind(new_state.player.granted_powers, :invincibility, 0)
+      assert player.invincibility == true
+      assert {:invincibility, _duration} = List.keyfind(player.granted_powers, :invincibility, 0)
     end
 
     test "bomb power-up destroys all enemies and creates explosion" do
       state = base_state()
-      {px, py, pxp, pyp} = state.player.position
+      {px, py, pxp, pyp} = state.players[@player_id].position
 
       # Place bomb power-up on the player
       bomb = %Flappy.PowerUp{
@@ -423,7 +443,7 @@ defmodule Flappy.GameStateTest do
       # Should have explosion from the bomb
       assert length(new_state.explosions) > 0
       # Score should increase by enemies_killed * score_multiplier
-      assert new_state.player.score >= 2 * state.score_multiplier
+      assert first_player(new_state).score >= 2 * state.score_multiplier
     end
   end
 
@@ -432,38 +452,38 @@ defmodule Flappy.GameStateTest do
       state = base_state()
       new_state = GameState.score_tick(state)
 
-      assert new_state.player.score == 1
+      assert first_player(new_state).score == 1
     end
 
     test "decrements power-up durations and removes expired ones" do
       state = base_state()
-      player = %{state.player | granted_powers: [{:laser, 2}, {:invincibility, 0}]}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | granted_powers: [{:laser, 2}, {:invincibility, 0}]}
+      state = %{state | players: %{@player_id => player}}
 
       new_state = GameState.score_tick(state)
 
       # laser: 2->1 (kept), invincibility: 0->nil (removed)
-      assert new_state.player.granted_powers == [{:laser, 1}]
+      assert first_player(new_state).granted_powers == [{:laser, 1}]
     end
 
     test "may generate enemies on even score ticks" do
       state = base_state()
       # Score will become 1 (odd) — no enemy generation
-      player = %{state.player | score: 0}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | score: 0}
+      state = %{state | players: %{@player_id => player}}
 
       new_state = GameState.score_tick(state)
       # Score is now 1 (odd), so no enemy generation triggered
-      assert new_state.player.score == 1
+      assert first_player(new_state).score == 1
       assert new_state.enemies == []
     end
 
     test "triggers enemy generation check on even score" do
       state = base_state()
       # Score will become 2 (even) — enemy generation attempted
-      player = %{state.player | score: 1}
+      player = %{state.players[@player_id] | score: 1}
       # Set difficulty_score very low so generation is very likely
-      state = %{state | player: player, difficulty_score: 6}
+      state = %{state | players: %{@player_id => player}, difficulty_score: 6}
 
       # Run many times to statistically verify generation happens
       results =
@@ -478,12 +498,12 @@ defmodule Flappy.GameStateTest do
 
     test "generates power-ups on score divisible by 10" do
       state = base_state()
-      player = %{state.player | score: 9}
-      state = %{state | player: player}
+      player = %{state.players[@player_id] | score: 9}
+      state = %{state | players: %{@player_id => player}}
 
       new_state = GameState.score_tick(state)
 
-      assert new_state.player.score == 10
+      assert first_player(new_state).score == 10
       assert length(new_state.power_ups) == 1
     end
   end
