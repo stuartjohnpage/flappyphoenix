@@ -34,8 +34,8 @@ defmodule FlappyWeb.FlappyLiveScores do
             </button>
           </div>
 
-          <%!-- Version selector (singleplayer only) --%>
-          <div :if={@mode == "singleplayer"}>
+          <%!-- Version selector --%>
+          <div>
             <h1 class="text-cyan-100">Version</h1>
 
             <.simple_form for={@form} phx-change="version_selected">
@@ -100,8 +100,8 @@ defmodule FlappyWeb.FlappyLiveScores do
     {:noreply, push_patch(socket, to: ~p"/highscores?mode=#{mode}")}
   end
 
-  def handle_event("version_selected", %{"version" => version}, socket) do
-    {:noreply, push_patch(socket, to: ~p"/highscores?version=#{version}&mode=singleplayer")}
+  def handle_event("version_selected", %{"version" => version}, %{assigns: %{mode: mode}} = socket) do
+    {:noreply, push_patch(socket, to: ~p"/highscores?version=#{version}&mode=#{mode}")}
   end
 
   def handle_params(params, _uri, socket) do
@@ -114,7 +114,7 @@ defmodule FlappyWeb.FlappyLiveScores do
     socket =
       case mode do
         "multiplayer" ->
-          mp_scores = MultiplayerScores.get_leaderboard(100)
+          mp_scores = MultiplayerScores.get_leaderboard(100, version)
           assign(socket, :mp_scores, mp_scores)
 
         _ ->
