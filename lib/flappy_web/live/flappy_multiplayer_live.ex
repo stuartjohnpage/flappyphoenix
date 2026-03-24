@@ -56,6 +56,7 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
           Survival time: {format_survival_time(@my_survival_time)}
         </p>
         <p class="text-white text-xl mb-6">Score: {@my_score}</p>
+        <p :if={@game_over} class="text-yellow-300 text-xl mb-2">Game Over — All birds down!</p>
 
         <.button phx-click="rejoin" class="bg-purple-600 text-white px-6 py-3 rounded text-2xl">
           Rejoin
@@ -202,6 +203,7 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
      |> assign(:name_form, to_form(%{}))
      |> assign(:joined, false)
      |> assign(:dead, false)
+     |> assign(:game_over, false)
      |> assign(:player_id, nil)
      |> assign(:player_name, "")
      |> assign(:game_state, %GameState{})
@@ -295,6 +297,7 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
     socket =
       socket
       |> assign(:game_state, game_state)
+      |> assign(:game_over, game_state.game_over)
       |> assign(:my_score, if(my_player, do: my_player.score, else: assigns.my_score))
       |> assign(:my_survival_time, if(my_player, do: Map.get(my_player, :survival_time, 0), else: assigns.my_survival_time))
       |> assign(:crown_holder_id, crown_id)
@@ -380,6 +383,7 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
     socket
     |> assign(:joined, true)
     |> assign(:dead, false)
+    |> assign(:game_over, false)
     |> assign(:player_id, player_id)
     |> assign(:player_name, player_name)
     |> assign(:last_bird_standing, false)
