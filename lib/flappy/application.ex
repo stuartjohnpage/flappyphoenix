@@ -14,8 +14,8 @@ defmodule Flappy.Application do
       {Phoenix.PubSub, name: Flappy.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Flappy.Finch},
-      # Start a worker by calling: Flappy.Worker.start_link(arg)
-      # {Flappy.Worker, arg},
+      # Global multiplayer engine
+      Flappy.MultiplayerEngine,
       # Start to serve requests, typically the last entry
       FlappyWeb.Endpoint
     ]

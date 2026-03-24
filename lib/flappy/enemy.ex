@@ -19,7 +19,8 @@ defmodule Flappy.Enemy do
     %{image: "/images/node.svg", size: {100, 100}, name: :node}
   ]
 
-  def maybe_generate_enemy(%{enemies: enemies, player: %{score: score}} = state) do
+  def maybe_generate_enemy(%{enemies: enemies} = state) do
+    score = effective_score(state)
     # The game gets harder as the score increases
     difficultly_rating = if score < state.difficulty_score - 5, do: score, else: state.difficulty_score - 4
     difficultly_cap = state.difficulty_score - difficultly_rating
@@ -75,17 +76,25 @@ defmodule Flappy.Enemy do
     %{state | enemies: enemies}
   end
 
-  def remove_hit_enemies(%{player: player} = state, enemies_hit) do
+  def remove_hit_enemies(state, enemies_hit, player_id) do
     hit_ids = MapSet.new(enemies_hit, & &1.id)
 
     {enemies, new_explosions} =
       Enum.reduce(state.enemies, {[], []}, fn enemy, {remaining, explosions} ->
         if MapSet.member?(hit_ids, enemy.id) do
+          {enemy_w, enemy_h} = enemy.sprite.size
+          {ex, ey, exp, eyp} = enemy.position
+
+          # Center the explosion on the enemy
+          explosion_size = 100
+          x_offset = (enemy_w - explosion_size) / 2 / state.game_width * 100
+          y_offset = (enemy_h - explosion_size) / 2 / state.game_height * 100
+
           explosion = %Explosion{
             duration: 3,
-            position: enemy.position,
-            velocity: enemy.velocity,
-            sprite: %{image: "/images/explosion.svg", size: {100, 100}, name: :explosion},
+            position: {ex, ey, exp + x_offset, eyp + y_offset},
+            velocity: {0, 0},
+            sprite: %{image: "/images/explosion.svg", size: {explosion_size, explosion_size}, name: :explosion},
             id: Ecto.UUID.generate()
           }
 
@@ -95,9 +104,18 @@ defmodule Flappy.Enemy do
         end
       end)
 
+    player = state.players[player_id]
     updated_score = player.score + PowerUp.score_for_kills(length(new_explosions), state.score_multiplier)
     player = %{player | score: updated_score}
 
-    %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, player: player}
+    %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, players: Map.put(state.players, player_id, player)}
+  end
+
+  defp effective_score(%{players: players}) do
+    players
+    |> Map.values()
+    |> Enum.filter(&Map.get(&1, :alive, true))
+    |> Enum.map(& &1.score)
+    |> Enum.max(fn -> 0 end)
   end
 end

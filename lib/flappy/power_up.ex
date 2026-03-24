@@ -78,7 +78,8 @@ defmodule Flappy.PowerUp do
     %{state | power_ups: power_ups}
   end
 
-  def grant_power_ups(%{player: player} = state, power_ups_hit) do
+  def grant_power_ups(state, power_ups_hit, player_id) do
+    player = state.players[player_id]
     hit_ids = Enum.map(power_ups_hit, & &1.id)
 
     {power_ups, granted_powers} =
@@ -99,7 +100,7 @@ defmodule Flappy.PowerUp do
           new_explosion = %Explosion{
             duration: 3,
             position: power_up.position,
-            velocity: power_up.velocity,
+            velocity: {0, 0},
             sprite: %{image: "/images/explosion.svg", size: {500, 500}, name: :explosion},
             id: Ecto.UUID.generate()
           }
@@ -127,7 +128,7 @@ defmodule Flappy.PowerUp do
     %{
       state
       | power_ups: power_ups,
-        player: player,
+        players: Map.put(state.players, player_id, player),
         enemies: enemies,
         explosions: explosions
     }

@@ -25,6 +25,7 @@ defmodule FlappyWeb.Router do
     pipe_through :browser
 
     live "/", FlappyLive
+    live "/multiplayer", FlappyMultiplayerLive
     live "/highscores", FlappyLiveScores
   end
 

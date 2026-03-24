@@ -3,6 +3,8 @@ defmodule Flappy.PowerUpTest do
 
   alias Flappy.PowerUp
 
+  @player_id "test-player"
+
   describe "derive_power_flags/1" do
     test "laser power returns laser_allowed true with laser sprite" do
       granted_powers = [{:laser, 5}]
@@ -59,7 +61,7 @@ defmodule Flappy.PowerUpTest do
     end
   end
 
-  describe "grant_power_ups/2 integration" do
+  describe "grant_power_ups/3 integration" do
     test "collecting bomb while laser is active doesn't reset laser" do
       bomb = %Flappy.PowerUp{
         position: {200.0, 300.0, 25.0, 50.0},
@@ -69,16 +71,22 @@ defmodule Flappy.PowerUpTest do
       }
 
       state = %{
-        player: %{
-          score: 10,
-          granted_powers: [{:laser, 5}],
-          laser_allowed: true,
-          invincibility: false,
-          sprite: Flappy.Players.get_sprite(:laser),
-          position: {100.0, 300.0, 12.5, 50.0},
-          velocity: {0, 0},
-          laser_beam: false,
-          laser_duration: 0
+        players: %{
+          @player_id => %{
+            score: 10,
+            granted_powers: [{:laser, 5}],
+            laser_allowed: true,
+            invincibility: false,
+            sprite: Flappy.Players.get_sprite(:laser),
+            position: {100.0, 300.0, 12.5, 50.0},
+            velocity: {0, 0},
+            laser_beam: false,
+            laser_duration: 0,
+            hitbox: nil,
+            alive: true,
+            name: "Test",
+            survival_time: 0
+          }
         },
         power_ups: [bomb],
         enemies: [
@@ -94,10 +102,11 @@ defmodule Flappy.PowerUpTest do
         score_multiplier: 10
       }
 
-      new_state = Flappy.PowerUp.grant_power_ups(state, [bomb])
+      new_state = Flappy.PowerUp.grant_power_ups(state, [bomb], @player_id)
 
-      assert new_state.player.laser_allowed == true, "laser should still be active after bomb"
-      assert new_state.player.sprite == Flappy.Players.get_sprite(:laser)
+      player = new_state.players[@player_id]
+      assert player.laser_allowed == true, "laser should still be active after bomb"
+      assert player.sprite == Flappy.Players.get_sprite(:laser)
     end
   end
 
@@ -114,16 +123,22 @@ defmodule Flappy.PowerUpTest do
         score_multiplier: 10,
         difficulty_score: 400,
         game_over: false,
-        player: %{
-          score: 0,
-          position: {100.0, 300.0, 12.5, 50.0},
-          velocity: {0.0, 0.0},
-          sprite: Flappy.Players.get_sprite(:laser),
-          granted_powers: [{:laser, 1}],
-          laser_allowed: true,
-          laser_beam: false,
-          laser_duration: 0,
-          invincibility: false
+        players: %{
+          @player_id => %{
+            score: 0,
+            position: {100.0, 300.0, 12.5, 50.0},
+            velocity: {0.0, 0.0},
+            sprite: Flappy.Players.get_sprite(:laser),
+            granted_powers: [{:laser, 1}],
+            laser_allowed: true,
+            laser_beam: false,
+            laser_duration: 0,
+            invincibility: false,
+            hitbox: nil,
+            alive: true,
+            name: "Test",
+            survival_time: 0
+          }
         },
         enemies: [],
         power_ups: [],
@@ -134,13 +149,14 @@ defmodule Flappy.PowerUpTest do
       # Player should lose laser_allowed and revert to default sprite
       new_state = Flappy.GameState.score_tick(state)
 
+      player = new_state.players[@player_id]
       # Duration 1->0 means it's still in the list but at 0
       # Next tick it'll be removed. But flags should update based on current state.
       # With duration 0, laser is effectively expired.
-      assert new_state.player.laser_allowed == false,
+      assert player.laser_allowed == false,
              "laser_allowed should be false when laser power expires"
 
-      assert new_state.player.sprite == Flappy.Players.get_sprite(),
+      assert player.sprite == Flappy.Players.get_sprite(),
              "sprite should revert to default when laser expires"
     end
   end

@@ -9,15 +9,16 @@ defmodule Flappy.Position do
     {percentage_x, percentage_y}
   end
 
-  def bird_x_eye_position(%{player: %{sprite: %{size: {w, _h}}, position: {_, _, x_pos, _y_pos}}, game_width: game_width}) do
+  def bird_x_eye_position(player, game_width) do
+    {w, _h} = player.sprite.size
+    {_, _, x_pos, _y_pos} = player.position
     w = w / game_width * 100
     x_pos + w * 0.81
   end
 
-  def bird_y_eye_position(%{
-        player: %{sprite: %{size: {_w, h}}, position: {_, _, _x_pos, y_pos}},
-        game_height: game_height
-      }) do
+  def bird_y_eye_position(player, game_height) do
+    {_w, h} = player.sprite.size
+    {_, _, _x_pos, y_pos} = player.position
     h = h / game_height * 100
     y_pos + h * 0.05
   end

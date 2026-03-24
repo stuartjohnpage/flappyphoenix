@@ -3,6 +3,7 @@ defmodule FlappyWeb.FlappyLiveScores do
   use FlappyWeb, :live_view
 
   alias Flappy.Players
+  alias Flappy.MultiplayerScores
 
   def render(assigns) do
     ~H"""
@@ -14,31 +15,68 @@ defmodule FlappyWeb.FlappyLiveScores do
           <p class="text-lg text-cyan-100 hover:text-fuchsia-500">Back to Game</p>
         </.back>
 
-        <div>
-          <h1 class="text-cyan-100">Version</h1>
+        <div class="flex flex-row gap-4 items-end">
+          <%!-- Mode tabs --%>
+          <div class="flex gap-2">
+            <button
+              phx-click="set_mode"
+              phx-value-mode="singleplayer"
+              class={"px-4 py-2 rounded-t text-lg font-bold #{if @mode == "singleplayer", do: "bg-blue-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+            >
+              Singleplayer
+            </button>
+            <button
+              phx-click="set_mode"
+              phx-value-mode="multiplayer"
+              class={"px-4 py-2 rounded-t text-lg font-bold #{if @mode == "multiplayer", do: "bg-purple-600 text-white", else: "bg-gray-700 text-gray-300 hover:bg-gray-600"}"}
+            >
+              Multiplayer
+            </button>
+          </div>
 
-          <.simple_form for={@form} phx-change="version_selected">
-            <.input
-              class="w-2/12"
-              type="select"
-              name="version"
-              options={@available_versions}
-              value={@version}
-            />
-          </.simple_form>
+          <%!-- Version selector --%>
+          <div>
+            <h1 class="text-cyan-100">Version</h1>
+
+            <.simple_form for={@form} phx-change="version_selected">
+              <.input
+                class="w-2/12"
+                type="select"
+                name="version"
+                options={@available_versions}
+                value={@version}
+              />
+            </.simple_form>
+          </div>
         </div>
       </div>
 
       <div class="scrollable-content">
-        <.table id="players" rows={@players}>
-          <:col :let={player} label="Name">
-            <p class="text-cyan-100">{player.name}</p>
-          </:col>
+        <%!-- Singleplayer table --%>
+        <div :if={@mode == "singleplayer"}>
+          <.table id="players" rows={@players}>
+            <:col :let={player} label="Name">
+              <p class="text-cyan-100">{player.name}</p>
+            </:col>
 
-          <:col :let={player} label="Score">
-            <p class="text-cyan-100">{player.score}</p>
-          </:col>
-        </.table>
+            <:col :let={player} label="Score">
+              <p class="text-cyan-100">{player.score}</p>
+            </:col>
+          </.table>
+        </div>
+
+        <%!-- Multiplayer table --%>
+        <div :if={@mode == "multiplayer"}>
+          <.table id="mp-scores" rows={@mp_scores}>
+            <:col :let={score} label="Name">
+              <p class="text-cyan-100">{score.name}</p>
+            </:col>
+
+            <:col :let={score} label="Survival Time">
+              <p class="text-cyan-100">{format_survival_time(score.survival_time_ms)}</p>
+            </:col>
+          </.table>
+        </div>
       </div>
     </div>
     """
@@ -52,32 +90,56 @@ defmodule FlappyWeb.FlappyLiveScores do
      socket
      |> assign(:form, to_form(%{}))
      |> assign(:available_versions, available_versions)
-     |> assign(:version, version)}
+     |> assign(:version, version)
+     |> assign(:mode, "singleplayer")
+     |> assign(:players, [])
+     |> assign(:mp_scores, [])}
   end
 
-  def handle_event("version_selected", %{"version" => version}, socket) do
-    {:noreply, push_patch(socket, to: ~p"/highscores?version=#{version}")}
+  def handle_event("set_mode", %{"mode" => mode}, socket) do
+    {:noreply, push_patch(socket, to: ~p"/highscores?mode=#{mode}")}
   end
 
-  def handle_params(%{"version" => version}, _uri, socket) do
-    limit = 100
-
-    players =
-      limit
-      |> Players.get_current_high_scores(version)
-      |> Enum.map(fn {name, score} -> %{name: name, score: score} end)
-
-    {:noreply, socket |> assign(:players, players) |> assign(:version, version)}
+  def handle_event("version_selected", %{"version" => version}, %{assigns: %{mode: mode}} = socket) do
+    {:noreply, push_patch(socket, to: ~p"/highscores?version=#{version}&mode=#{mode}")}
   end
 
-  def handle_params(_params, _uri, socket) do
-    version = Application.get_env(:flappy, :game_version, "1")
+  def handle_params(params, _uri, socket) do
+    mode = params["mode"] || "singleplayer"
+    version = params["version"] || Application.get_env(:flappy, :game_version, "1")
 
-    players =
-      100
-      |> Players.get_current_high_scores(version)
-      |> Enum.map(fn {name, score} -> %{name: name, score: score} end)
+    socket = assign(socket, :mode, mode)
+    socket = assign(socket, :version, version)
 
-    {:noreply, socket |> assign(:players, players) |> assign(:version, version)}
+    socket =
+      case mode do
+        "multiplayer" ->
+          mp_scores = MultiplayerScores.get_leaderboard(100, version)
+          assign(socket, :mp_scores, mp_scores)
+
+        _ ->
+          players =
+            100
+            |> Players.get_current_high_scores(version)
+            |> Enum.map(fn {name, score} -> %{name: name, score: score} end)
+
+          assign(socket, :players, players)
+      end
+
+    {:noreply, socket}
   end
+
+  defp format_survival_time(ms) when is_integer(ms) do
+    total_seconds = div(ms, 1000)
+    minutes = div(total_seconds, 60)
+    secs = rem(total_seconds, 60)
+
+    if minutes > 0 do
+      "#{minutes}m #{String.pad_leading(Integer.to_string(secs), 2, "0")}s"
+    else
+      "#{secs}s"
+    end
+  end
+
+  defp format_survival_time(_), do: "0s"
 end

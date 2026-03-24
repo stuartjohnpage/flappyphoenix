@@ -5,6 +5,7 @@ defmodule Flappy.HitboxCacheTest do
 
   @game_width 800
   @game_height 600
+  @player_id "test-player"
 
   describe "entity_hitbox/5" do
     test "returns a polygon for an angular entity" do
@@ -54,25 +55,27 @@ defmodule Flappy.HitboxCacheTest do
       player_hitbox = Hitbox.player_hitbox(12.5, 16.66, 50, 50, @game_width, @game_height)
       overlapping_hitbox = Hitbox.entity_hitbox(12.5, 16.66, 100, 100, @game_width, @game_height, :angular)
 
-      state = %{
-        game_width: @game_width,
-        game_height: @game_height,
-        player: %{
-          sprite: %{size: {50, 50}},
-          position: {100.0, 100.0, 12.5, 16.66},
-          hitbox: player_hitbox
-        },
-        enemies: [
-          %{
-            # Position says far away, but hitbox is overlapping player
-            position: {700.0, 500.0, 90.0, 90.0},
-            sprite: %{size: {100, 100}, name: :angular},
-            hitbox: overlapping_hitbox
-          }
-        ]
+      player = %{
+        sprite: %{size: {50, 50}},
+        position: {100.0, 100.0, 12.5, 16.66},
+        hitbox: player_hitbox
       }
 
-      result = Hitbox.check_for_enemy_collisions?(state)
+      enemies = [
+        %{
+          # Position says far away, but hitbox is overlapping player
+          position: {700.0, 500.0, 90.0, 90.0},
+          sprite: %{size: {100, 100}, name: :angular},
+          hitbox: overlapping_hitbox
+        }
+      ]
+
+      state = %{
+        game_width: @game_width,
+        game_height: @game_height
+      }
+
+      result = Hitbox.check_for_enemy_collisions(player, enemies, state)
       assert length(result) > 0, "should detect collision via cached hitbox, not recomputed from position"
     end
   end
@@ -97,16 +100,22 @@ defmodule Flappy.HitboxCacheTest do
         score_multiplier: 10,
         difficulty_score: 400,
         game_over: false,
-        player: %{
-          score: 0,
-          position: {100.0, 300.0, 12.5, 50.0},
-          velocity: {0, 0},
-          sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
-          granted_powers: [],
-          laser_allowed: false,
-          laser_beam: false,
-          laser_duration: 0,
-          invincibility: false
+        players: %{
+          @player_id => %{
+            score: 0,
+            position: {100.0, 300.0, 12.5, 50.0},
+            velocity: {0, 0},
+            sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
+            granted_powers: [],
+            laser_allowed: false,
+            laser_beam: false,
+            laser_duration: 0,
+            invincibility: false,
+            hitbox: nil,
+            alive: true,
+            name: "Test",
+            survival_time: 0
+          }
         },
         enemies: [enemy],
         power_ups: [],
@@ -138,16 +147,22 @@ defmodule Flappy.HitboxCacheTest do
         score_multiplier: 10,
         difficulty_score: 400,
         game_over: false,
-        player: %{
-          score: 0,
-          position: {100.0, 300.0, 12.5, 50.0},
-          velocity: {0, 0},
-          sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
-          granted_powers: [],
-          laser_allowed: false,
-          laser_beam: false,
-          laser_duration: 0,
-          invincibility: false
+        players: %{
+          @player_id => %{
+            score: 0,
+            position: {100.0, 300.0, 12.5, 50.0},
+            velocity: {0, 0},
+            sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
+            granted_powers: [],
+            laser_allowed: false,
+            laser_beam: false,
+            laser_duration: 0,
+            invincibility: false,
+            hitbox: nil,
+            alive: true,
+            name: "Test",
+            survival_time: 0
+          }
         },
         enemies: [],
         power_ups: [power_up],
@@ -161,7 +176,7 @@ defmodule Flappy.HitboxCacheTest do
       assert %Polygons.Polygon{} = updated_pu.hitbox
     end
 
-    test "Player.update_player attaches hitbox to player" do
+    test "Player.update_players attaches hitbox to player" do
       state = %Flappy.GameState{
         game_id: "test",
         game_height: @game_height,
@@ -173,25 +188,32 @@ defmodule Flappy.HitboxCacheTest do
         score_multiplier: 10,
         difficulty_score: 400,
         game_over: false,
-        player: %{
-          score: 0,
-          position: {100.0, 300.0, 12.5, 50.0},
-          velocity: {0.0, 0.0},
-          sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
-          granted_powers: [],
-          laser_allowed: false,
-          laser_beam: false,
-          laser_duration: 0,
-          invincibility: false
+        players: %{
+          @player_id => %{
+            score: 0,
+            position: {100.0, 300.0, 12.5, 50.0},
+            velocity: {0.0, 0.0},
+            sprite: %{image: "/images/phoenix.svg", size: {50, 50}, name: :phoenix},
+            granted_powers: [],
+            laser_allowed: false,
+            laser_beam: false,
+            laser_duration: 0,
+            invincibility: false,
+            hitbox: nil,
+            alive: true,
+            name: "Test",
+            survival_time: 0
+          }
         },
         enemies: [],
         power_ups: [],
         explosions: []
       }
 
-      new_state = Flappy.Players.Player.update_player(state)
+      new_state = Flappy.Players.Player.update_players(state)
 
-      assert %Polygons.Polygon{} = new_state.player.hitbox
+      player = new_state.players[@player_id]
+      assert %Polygons.Polygon{} = player.hitbox
     end
   end
 end
