@@ -6,6 +6,8 @@ defmodule Flappy.MultiplayerEngine do
 
   use GenServer
 
+  require Logger
+
   alias Flappy.GameState
   alias Flappy.MultiplayerScores
 
@@ -48,11 +50,12 @@ defmodule Flappy.MultiplayerEngine do
 
   @impl true
   def handle_call({:join, player_id, player_name}, _from, state) do
-    was_empty = map_size(state.players) == 0
+    needs_fresh_start = map_size(state.players) == 0 || state.game_over
 
     state =
-      if was_empty do
-        # First player: fresh state + start timers
+      if needs_fresh_start do
+        # First player or game_over: fresh state + start timers
+        stop_timers(state)
         state = fresh_state()
         state = GameState.add_player(state, player_id, player_name)
         start_timers(state)
@@ -74,13 +77,11 @@ defmodule Flappy.MultiplayerEngine do
 
     # Save survival time if player was alive
     if player && Map.get(player, :alive, true) do
-      survival_ms = Map.get(player, :survival_time, 0) * state.score_tick_interval
-      if survival_ms > 0, do: MultiplayerScores.save_score!(player.name, survival_ms)
+      save_score(player, state)
     end
 
     state = GameState.remove_player(state, player_id)
 
-    # Broadcast the death/leave
     broadcast(state)
 
     # If no players left, stop timers and reset
@@ -105,7 +106,6 @@ defmodule Flappy.MultiplayerEngine do
 
   @impl true
   def handle_info(:game_tick, %{game_over: true} = state) do
-    # Already game over — don't keep ticking or saving scores
     {:noreply, state}
   end
 
@@ -115,7 +115,9 @@ defmodule Flappy.MultiplayerEngine do
     else
       case GameState.tick(state) do
         {:game_over, state} ->
-          save_all_scores(state)
+          # All players dead — save only those not already saved by handle_deaths
+          save_unsaved_scores(state)
+          stop_timers(state)
           broadcast(state)
           {:noreply, state}
 
@@ -162,7 +164,6 @@ defmodule Flappy.MultiplayerEngine do
   end
 
   defp start_timers(state) do
-    # Store timer refs on the process dictionary for cleanup
     {:ok, game_ref} = :timer.send_interval(state.game_tick_interval, self(), :game_tick)
     {:ok, score_ref} = :timer.send_interval(state.score_tick_interval, self(), :score_tick)
     Process.put(:game_timer, game_ref)
@@ -186,21 +187,34 @@ defmodule Flappy.MultiplayerEngine do
     )
   end
 
+  # Save scores for players who just died this tick
   defp handle_deaths(state) do
     Enum.each(state.deaths_this_tick, fn player_id ->
       player = state.players[player_id]
+      if player, do: save_score(player, state)
+    end)
+  end
 
-      if player do
-        survival_ms = Map.get(player, :survival_time, 0) * state.score_tick_interval
-        if survival_ms > 0, do: MultiplayerScores.save_score!(player.name, survival_ms)
+  # On game_over, only save players NOT already in deaths_this_tick
+  # (those were already saved by handle_deaths in prior ticks)
+  defp save_unsaved_scores(state) do
+    already_saved = MapSet.new(state.deaths_this_tick)
+
+    Enum.each(state.players, fn {player_id, player} ->
+      unless MapSet.member?(already_saved, player_id) do
+        save_score(player, state)
       end
     end)
   end
 
-  defp save_all_scores(state) do
-    Enum.each(state.players, fn {_id, player} ->
-      survival_ms = Map.get(player, :survival_time, 0) * state.score_tick_interval
-      if survival_ms > 0, do: MultiplayerScores.save_score!(player.name, survival_ms)
-    end)
+  defp save_score(player, state) do
+    survival_ms = Map.get(player, :survival_time, 0) * state.score_tick_interval
+
+    if survival_ms > 0 do
+      case MultiplayerScores.save_score(player.name, survival_ms) do
+        {:ok, _} -> :ok
+        {:error, reason} -> Logger.error("Failed to save multiplayer score: #{inspect(reason)}")
+      end
+    end
   end
 end

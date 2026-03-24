@@ -7,12 +7,12 @@ defmodule Flappy.MultiplayerScores do
   alias Flappy.MultiplayerScores.Score
   alias Flappy.Repo
 
-  def save_score!(name, survival_time_ms) do
+  def save_score(name, survival_time_ms) do
     version = get_version()
 
     %Score{}
     |> Score.changeset(%{name: name, survival_time_ms: survival_time_ms, version: version})
-    |> Repo.insert!()
+    |> Repo.insert()
   end
 
   def get_leaderboard(limit, version) do
