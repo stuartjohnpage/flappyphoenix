@@ -5,6 +5,7 @@ defmodule FlappyWeb.FlappyLive do
   use FlappyWeb, :live_view
 
   alias Flappy.FlappyEngine
+  alias Flappy.GameState
   alias Flappy.Position
 
   def render(assigns) do
@@ -189,7 +190,7 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_started, false)
      |> assign(:engine_pid, nil)
      |> assign(:current_high_scores, [])
-     |> assign(:game_state, %FlappyEngine{})
+     |> assign(:game_state, %GameState{})
      |> assign(:game_height, game_height)}
   end
 

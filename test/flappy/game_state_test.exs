@@ -3,8 +3,112 @@ defmodule Flappy.GameStateTest do
 
   alias Flappy.GameState
 
+  describe "new/0" do
+    test "creates a valid default game state struct" do
+      state = GameState.new()
+
+      assert %GameState{} = state
+      assert state.game_over == false
+      assert state.enemies == []
+      assert state.power_ups == []
+      assert state.explosions == []
+      assert state.player.position != nil
+      assert state.player.velocity == {0.0, 0.0}
+      assert state.gravity > 0
+      assert state.game_height > 0
+      assert state.game_width > 0
+    end
+
+    test "accepts top-level overrides" do
+      state = GameState.new(gravity: 50, game_height: 1200)
+
+      assert state.gravity == 50
+      assert state.game_height == 1200
+    end
+
+    test "accepts player overrides merged into defaults" do
+      state = GameState.new(player: %{laser_allowed: true, score: 42})
+
+      assert state.player.laser_allowed == true
+      assert state.player.score == 42
+      # defaults preserved
+      assert state.player.velocity == {0.0, 0.0}
+      assert state.player.invincibility == false
+    end
+  end
+
+  describe "handle_input/2" do
+    test "go_up decreases y velocity (thrust upward)" do
+      state = GameState.new()
+      {_vx, initial_vy} = state.player.velocity
+
+      new_state = GameState.handle_input(state, :go_up)
+
+      {_vx, new_vy} = new_state.player.velocity
+      assert new_vy < initial_vy, "y velocity should decrease (move up)"
+    end
+
+    test "go_down increases y velocity (thrust downward)" do
+      state = GameState.new()
+      {_vx, initial_vy} = state.player.velocity
+
+      new_state = GameState.handle_input(state, :go_down)
+
+      {_vx, new_vy} = new_state.player.velocity
+      assert new_vy > initial_vy, "y velocity should increase (move down)"
+    end
+
+    test "go_right increases x velocity" do
+      state = GameState.new()
+      {initial_vx, _vy} = state.player.velocity
+
+      new_state = GameState.handle_input(state, :go_right)
+
+      {new_vx, _vy} = new_state.player.velocity
+      assert new_vx > initial_vx, "x velocity should increase (move right)"
+    end
+
+    test "go_left decreases x velocity" do
+      state = GameState.new()
+      {initial_vx, _vy} = state.player.velocity
+
+      new_state = GameState.handle_input(state, :go_left)
+
+      {new_vx, _vy} = new_state.player.velocity
+      assert new_vx < initial_vx, "x velocity should decrease (move left)"
+    end
+
+    test "fire_laser activates laser when laser_allowed" do
+      state = GameState.new(player: %{laser_allowed: true})
+
+      new_state = GameState.handle_input(state, :fire_laser)
+
+      assert new_state.player.laser_beam == true
+      assert new_state.player.laser_duration == 3
+    end
+
+    test "fire_laser is a no-op when laser not allowed" do
+      state = GameState.new(player: %{laser_allowed: false})
+
+      new_state = GameState.handle_input(state, :fire_laser)
+
+      assert new_state.player.laser_beam == false
+      assert new_state.player.laser_duration == 0
+    end
+
+    test "update_viewport changes dimensions and zoom" do
+      state = GameState.new()
+
+      new_state = GameState.handle_input(state, {:update_viewport, 2.0, 1920, 1080})
+
+      assert new_state.zoom_level == 2.0
+      assert new_state.game_width == 1920
+      assert new_state.game_height == 1080
+    end
+  end
+
   defp base_state do
-    %Flappy.FlappyEngine{
+    %Flappy.GameState{
       game_id: "test-game",
       game_height: 600,
       game_width: 800,
