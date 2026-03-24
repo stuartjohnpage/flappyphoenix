@@ -66,11 +66,11 @@ defmodule FlappyWeb.FlappyLive do
           </div>
 
           <div class="flex flex-row gap-4">
-            <.button type="submit" class="bg-blue-500 rounded">
+            <.button type="submit" name="mode" value="singleplayer" class="bg-blue-500 rounded">
               <p class="text-4xl text-white">Singleplayer</p>
             </.button>
 
-            <.button type="button" class="bg-purple-600 rounded" phx-click="go_multiplayer">
+            <.button type="submit" name="mode" value="multiplayer" class="bg-purple-600 rounded">
               <p class="text-4xl text-white">Multiplayer</p>
             </.button>
           </div>
@@ -203,10 +203,6 @@ defmodule FlappyWeb.FlappyLive do
      |> assign(:game_height, game_height)}
   end
 
-  def handle_event("go_multiplayer", _, socket) do
-    {:noreply, push_navigate(socket, to: ~p"/multiplayer")}
-  end
-
   def handle_event(
         "play_again",
         _,
@@ -262,6 +258,19 @@ defmodule FlappyWeb.FlappyLive do
 
   def handle_event("player_action", _, socket) do
     {:noreply, socket}
+  end
+
+  def handle_event("enter_name", %{"player_name" => player_name, "mode" => "multiplayer"}, socket) do
+    if String.length(player_name) in 1..10 do
+      player_name =
+        player_name
+        |> HtmlSanitizeEx.strip_tags()
+        |> sanitize_player_name()
+
+      {:noreply, push_navigate(socket, to: ~p"/multiplayer?name=#{player_name}")}
+    else
+      {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
+    end
   end
 
   def handle_event("enter_name", %{"player_name" => player_name}, socket) do

@@ -218,6 +218,14 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
      |> assign(:zoom_level, zoom_level)}
   end
 
+  def handle_params(%{"name" => name}, _uri, %{assigns: %{joined: false}} = socket) when byte_size(name) > 0 do
+    {:noreply, join_game(name, socket)}
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
+  end
+
   def terminate(_reason, %{assigns: %{joined: true, player_id: player_id}} = _socket) do
     MultiplayerEngine.leave(player_id)
     :ok
@@ -227,34 +235,14 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
 
   def handle_event("join_game", %{"player_name" => player_name}, socket) do
     if String.length(player_name) in 1..10 do
-      player_name =
-        player_name
-        |> HtmlSanitizeEx.strip_tags()
-        |> sanitize_player_name()
-
-      player_id = Ecto.UUID.generate()
-      :ok = MultiplayerEngine.join(player_id, player_name)
-
-      {:noreply,
-       socket
-       |> assign(:joined, true)
-       |> assign(:dead, false)
-       |> assign(:player_id, player_id)
-       |> assign(:player_name, player_name)}
+      {:noreply, join_game(player_name, socket)}
     else
       {:noreply, put_flash(socket, :error, "Name must be between 1 and 10 characters")}
     end
   end
 
   def handle_event("rejoin", _, %{assigns: %{player_name: player_name}} = socket) do
-    player_id = Ecto.UUID.generate()
-    :ok = MultiplayerEngine.join(player_id, player_name)
-
-    {:noreply,
-     socket
-     |> assign(:dead, false)
-     |> assign(:player_id, player_id)
-     |> assign(:last_bird_standing, false)}
+    {:noreply, join_game(player_name, socket)}
   end
 
   def handle_event(
@@ -375,6 +363,26 @@ defmodule FlappyWeb.FlappyMultiplayerLive do
     |> binary_part(0, 2)
     |> :binary.decode_unsigned()
     |> rem(50)
+  end
+
+  defp join_game(player_name, %{assigns: assigns} = socket) do
+    player_name =
+      player_name
+      |> HtmlSanitizeEx.strip_tags()
+      |> sanitize_player_name()
+
+    player_id = Ecto.UUID.generate()
+    :ok = MultiplayerEngine.join(player_id, player_name)
+
+    # Update the shared game dimensions to match this player's viewport
+    MultiplayerEngine.update_viewport(assigns.zoom_level, assigns.game_width, assigns.game_height)
+
+    socket
+    |> assign(:joined, true)
+    |> assign(:dead, false)
+    |> assign(:player_id, player_id)
+    |> assign(:player_name, player_name)
+    |> assign(:last_bird_standing, false)
   end
 
   defp sanitize_player_name(player_name) do
