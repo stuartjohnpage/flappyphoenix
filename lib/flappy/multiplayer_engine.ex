@@ -63,7 +63,9 @@ defmodule Flappy.MultiplayerEngine do
       end
 
     # Monitor the LiveView process for automatic cleanup on disconnect
-    Process.monitor(caller_pid)
+    unless Map.has_key?(Process.get(:pid_to_player, %{}), caller_pid) do
+      Process.monitor(caller_pid)
+    end
 
     needs_fresh_start = map_size(state.players) == 0 || state.game_over
 
@@ -117,14 +119,13 @@ defmodule Flappy.MultiplayerEngine do
     else
       case GameState.tick(state) do
         {:game_over, state} ->
-          # All players dead — save only those not already saved by handle_deaths
-          save_unsaved_scores(state)
+          save_deaths_this_tick(state)
           stop_timers(state)
           broadcast(state)
           {:noreply, state}
 
         {:ok, state} ->
-          handle_deaths(state)
+          save_deaths_this_tick(state)
           broadcast(state)
           {:noreply, state}
       end
@@ -202,17 +203,8 @@ defmodule Flappy.MultiplayerEngine do
     )
   end
 
-  # Save scores for players who just died this tick
-  defp handle_deaths(state) do
-    Enum.each(state.deaths_this_tick, fn player_id ->
-      player = state.players[player_id]
-      if player, do: save_score(player, state)
-    end)
-  end
-
-  # On game_over, save scores only for players who died in the final tick.
-  # Players who died in earlier ticks were already saved by handle_deaths.
-  defp save_unsaved_scores(state) do
+  # Save scores for players who died this tick (used for both mid-game deaths and game_over)
+  defp save_deaths_this_tick(state) do
     Enum.each(state.deaths_this_tick, fn player_id ->
       player = state.players[player_id]
       if player, do: save_score(player, state)
