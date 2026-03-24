@@ -82,7 +82,7 @@ defmodule Flappy.Hitbox do
       {x, y},
       {x + w, y},
       {x + w, y + h},
-      {w, y + h}
+      {x, y + h}
     ])
   end
 
