@@ -86,7 +86,7 @@ defmodule Flappy.HitboxCacheTest do
         id: "enemy-1"
       }
 
-      state = %Flappy.FlappyEngine{
+      state = %Flappy.GameState{
         game_id: "test",
         game_height: @game_height,
         game_width: @game_width,
@@ -127,7 +127,7 @@ defmodule Flappy.HitboxCacheTest do
         id: "pu-1"
       }
 
-      state = %Flappy.FlappyEngine{
+      state = %Flappy.GameState{
         game_id: "test",
         game_height: @game_height,
         game_width: @game_width,
@@ -162,7 +162,7 @@ defmodule Flappy.HitboxCacheTest do
     end
 
     test "Player.update_player attaches hitbox to player" do
-      state = %Flappy.FlappyEngine{
+      state = %Flappy.GameState{
         game_id: "test",
         game_height: @game_height,
         game_width: @game_width,

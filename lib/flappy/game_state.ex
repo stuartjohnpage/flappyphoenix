@@ -1,14 +1,127 @@
 defmodule Flappy.GameState do
   @moduledoc """
-  Encapsulated game logic extracted from FlappyEngine.
-  All functions have no external side effects — no GenServer, no PubSub, no DB I/O.
+  Pure game state machine. All functions take state in, return state out.
+  No side effects — no GenServer, no PubSub, no DB I/O.
   """
 
   alias Flappy.Enemy
   alias Flappy.Explosion
   alias Flappy.Hitbox
+  alias Flappy.Players
   alias Flappy.Players.Player
   alias Flappy.PowerUp
+
+  @gravity 175
+  @game_tick_interval 15
+  @score_tick_interval 1000
+  @score_multiplier 10
+  @difficulty_score 400
+
+  defstruct game_id: nil,
+            current_high_scores: [],
+            game_tick_interval: 0,
+            score_tick_interval: 0,
+            difficulty_score: 0,
+            score_multiplier: 0,
+            game_over: false,
+            game_height: 0,
+            game_width: 0,
+            zoom_level: 1,
+            gravity: 0,
+            enemies: [],
+            power_ups: [],
+            player: %{
+              position: {0, 0, 0, 0},
+              velocity: {0.0, 0.0},
+              sprite: %{image: "", size: {0, 0}, name: :default},
+              score: 0,
+              granted_powers: [],
+              laser_allowed: false,
+              laser_beam: false,
+              laser_duration: 0,
+              invincibility: false
+            },
+            explosions: []
+
+  def new(overrides \\ []) do
+    defaults = %__MODULE__{
+      game_id: Ecto.UUID.generate(),
+      game_tick_interval: @game_tick_interval,
+      score_tick_interval: @score_tick_interval,
+      score_multiplier: @score_multiplier,
+      difficulty_score: @difficulty_score,
+      game_over: false,
+      game_height: 600,
+      game_width: 800,
+      zoom_level: 1,
+      gravity: @gravity,
+      enemies: [],
+      power_ups: [],
+      explosions: [],
+      player: %{
+        position: {100.0, 300.0, 12.5, 50.0},
+        velocity: {0.0, 0.0},
+        sprite: Players.get_sprite(),
+        score: 0,
+        granted_powers: [],
+        laser_allowed: false,
+        laser_beam: false,
+        laser_duration: 0,
+        invincibility: false
+      }
+    }
+
+    Enum.reduce(overrides, defaults, fn
+      {:player, player_overrides}, acc when is_map(player_overrides) ->
+        %{acc | player: Map.merge(acc.player, player_overrides)}
+
+      {key, value}, acc ->
+        Map.put(acc, key, value)
+    end)
+  end
+
+  @thrust -100
+
+  def handle_input(%{player: player, zoom_level: zoom_level} = state, :go_up) do
+    {x_velocity, y_velocity} = player.velocity
+    %{state | player: %{player | velocity: {x_velocity, y_velocity + @thrust / zoom_level}}}
+  end
+
+  def handle_input(%{player: player, zoom_level: zoom_level} = state, :go_down) do
+    {x_velocity, y_velocity} = player.velocity
+    %{state | player: %{player | velocity: {x_velocity, y_velocity - @thrust / zoom_level}}}
+  end
+
+  def handle_input(%{player: player, zoom_level: zoom_level} = state, :go_right) do
+    {x_velocity, y_velocity} = player.velocity
+    %{state | player: %{player | velocity: {x_velocity - @thrust / zoom_level, y_velocity}}}
+  end
+
+  def handle_input(%{player: player, zoom_level: zoom_level} = state, :go_left) do
+    {x_velocity, y_velocity} = player.velocity
+    %{state | player: %{player | velocity: {x_velocity + @thrust / zoom_level, y_velocity}}}
+  end
+
+  def handle_input(%{player: player} = state, :fire_laser) do
+    if player.laser_allowed do
+      %{state | player: %{player | laser_beam: true, laser_duration: 3}}
+    else
+      state
+    end
+  end
+
+  def handle_input(state, {:update_viewport, zoom_level, game_width, game_height}) do
+    %{state | zoom_level: zoom_level, game_width: game_width, game_height: game_height}
+  end
+
+  def strip_hitboxes(state) do
+    %{
+      state
+      | enemies: Enum.map(state.enemies, &%{&1 | hitbox: nil}),
+        power_ups: Enum.map(state.power_ups, &%{&1 | hitbox: nil}),
+        player: Map.put(state.player, :hitbox, nil)
+    }
+  end
 
   def tick(state) do
     state =

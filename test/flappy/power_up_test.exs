@@ -103,7 +103,7 @@ defmodule Flappy.PowerUpTest do
 
   describe "score_tick power expiry" do
     test "player loses laser_allowed and sprite reverts when laser expires" do
-      state = %Flappy.FlappyEngine{
+      state = %Flappy.GameState{
         game_id: "test",
         game_height: 600,
         game_width: 800,
