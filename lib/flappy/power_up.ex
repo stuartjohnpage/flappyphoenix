@@ -64,7 +64,10 @@ defmodule Flappy.PowerUp do
         {x_percent, y_percent} = Position.get_percentage_position({new_x, new_y}, state.game_width, state.game_height)
 
         {w, h} = power_up.sprite.size
-        hitbox = Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, power_up.sprite.name)
+
+        hitbox =
+          Hitbox.entity_hitbox(x_percent, y_percent, w, h, state.game_width, state.game_height, power_up.sprite.name)
+
         %{power_up | position: {new_x, new_y, x_percent, y_percent}, hitbox: hitbox}
       end)
       |> Enum.reject(fn power_up ->
@@ -87,24 +90,11 @@ defmodule Flappy.PowerUp do
         end
       end)
 
-    {laser_allowed?, invincibility?} =
-      Enum.reduce(granted_powers, {false, false}, fn
-        {:laser, duration}, {_laser_allowed, invis} ->
-          if duration > 0,
-            do: {true, invis},
-            else: {false, invis}
-
-        {:invincibility, duration}, {laser_allowed, _invis} ->
-          if duration > 0,
-            do: {laser_allowed, true},
-            else: {laser_allowed, false}
-
-        {_invincibility, _laser_allowed}, _acc ->
-          {false, false}
-      end)
+    %{laser_allowed: laser_allowed?, invincibility: invincibility?, sprite: sprite} =
+      derive_power_flags(granted_powers)
 
     {bomb_hit?, explosions} =
-      Enum.reduce(power_ups_hit, {false, state.explosions}, fn power_up, {_bomb_hit, explosions} ->
+      Enum.reduce(power_ups_hit, {false, state.explosions}, fn power_up, {bomb_hit, explosions} ->
         if power_up.sprite.name == :bomb do
           new_explosion = %Explosion{
             duration: 3,
@@ -116,28 +106,13 @@ defmodule Flappy.PowerUp do
 
           {true, [new_explosion | explosions]}
         else
-          {false, explosions}
+          {bomb_hit, explosions}
         end
       end)
 
-    sprite =
-      cond do
-        laser_allowed? && invincibility? ->
-          Players.get_sprite(:laser_invincibility)
-
-        invincibility? ->
-          Players.get_sprite(:invincibility)
-
-        laser_allowed? ->
-          Players.get_sprite(:laser)
-
-        true ->
-          Players.get_sprite()
-      end
-
     {score, enemies} =
       if bomb_hit?,
-        do: {player.score + length(state.enemies) * state.score_multiplier, []},
+        do: {player.score + score_for_kills(length(state.enemies), state.score_multiplier), []},
         else: {player.score, state.enemies}
 
     player = %{
@@ -156,6 +131,25 @@ defmodule Flappy.PowerUp do
         enemies: enemies,
         explosions: explosions
     }
+  end
+
+  def score_for_kills(kill_count, score_multiplier) do
+    kill_count * score_multiplier
+  end
+
+  def derive_power_flags(granted_powers) do
+    laser_allowed = Enum.any?(granted_powers, fn {power, duration} -> power == :laser && duration > 0 end)
+    invincibility = Enum.any?(granted_powers, fn {power, duration} -> power == :invincibility && duration > 0 end)
+
+    sprite =
+      cond do
+        laser_allowed && invincibility -> Players.get_sprite(:laser_invincibility)
+        invincibility -> Players.get_sprite(:invincibility)
+        laser_allowed -> Players.get_sprite(:laser)
+        true -> Players.get_sprite()
+      end
+
+    %{laser_allowed: laser_allowed, invincibility: invincibility, sprite: sprite}
   end
 
   defp pick_power_up do

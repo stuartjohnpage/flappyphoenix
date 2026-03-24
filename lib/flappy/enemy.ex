@@ -7,6 +7,7 @@ defmodule Flappy.Enemy do
   alias Flappy.Explosion
   alias Flappy.Hitbox
   alias Flappy.Position
+  alias Flappy.PowerUp
 
   defstruct position: {0, 0, 0, 0}, velocity: {0, 0}, sprite: %{image: "", size: {0, 0}, name: :atom}, id: "", hitbox: nil
 
@@ -94,7 +95,7 @@ defmodule Flappy.Enemy do
         end
       end)
 
-    updated_score = player.score + length(new_explosions) * state.score_multiplier
+    updated_score = player.score + PowerUp.score_for_kills(length(new_explosions), state.score_multiplier)
     player = %{player | score: updated_score}
 
     %{state | enemies: enemies, explosions: new_explosions ++ state.explosions, player: player}

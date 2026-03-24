@@ -52,8 +52,7 @@ defmodule Flappy.Players.Player do
     hitbox = Hitbox.player_hitbox(x_percent, y_percent, sprite_w, sprite_h, game_width, game_height)
 
     player =
-      player
-      |> Map.merge(%{
+      Map.merge(player, %{
         position: {new_x_position, new_y_position, x_percent, y_percent},
         velocity: {x_velocity, new_y_velocity},
         laser_beam: laser_on?,
