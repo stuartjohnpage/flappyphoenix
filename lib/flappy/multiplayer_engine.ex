@@ -104,24 +104,31 @@ defmodule Flappy.MultiplayerEngine do
   end
 
   @impl true
+  def handle_info(:game_tick, %{game_over: true} = state) do
+    # Already game over — don't keep ticking or saving scores
+    {:noreply, state}
+  end
+
   def handle_info(:game_tick, state) do
     if map_size(state.players) == 0 do
       {:noreply, state}
     else
       case GameState.tick(state) do
         {:game_over, state} ->
-          # All players dead - save scores and broadcast
           save_all_scores(state)
           broadcast(state)
           {:noreply, state}
 
         {:ok, state} ->
-          # Handle any deaths this tick
           handle_deaths(state)
           broadcast(state)
           {:noreply, state}
       end
     end
+  end
+
+  def handle_info(:score_tick, %{game_over: true} = state) do
+    {:noreply, state}
   end
 
   def handle_info(:score_tick, state) do
