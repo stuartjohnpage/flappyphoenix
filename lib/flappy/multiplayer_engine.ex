@@ -215,9 +215,13 @@ defmodule Flappy.MultiplayerEngine do
     survival_ms = Map.get(player, :survival_time, 0) * state.score_tick_interval
 
     if survival_ms > 0 do
-      case MultiplayerScores.save_score(player.name, survival_ms) do
-        {:ok, _} -> :ok
-        {:error, reason} -> Logger.error("Failed to save multiplayer score: #{inspect(reason)}")
+      try do
+        case MultiplayerScores.save_score(player.name, survival_ms) do
+          {:ok, _} -> :ok
+          {:error, reason} -> Logger.error("Failed to save multiplayer score: #{inspect(reason)}")
+        end
+      rescue
+        e -> Logger.error("Failed to save multiplayer score: #{Exception.message(e)}")
       end
     end
   end
