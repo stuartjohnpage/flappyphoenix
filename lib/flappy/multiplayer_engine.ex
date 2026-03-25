@@ -15,28 +15,30 @@ defmodule Flappy.MultiplayerEngine do
 
   # --- Client API ---
 
+  @global_name {:global, __MODULE__}
+
   def start_link(_opts) do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+    GenServer.start_link(__MODULE__, :ok, name: @global_name)
   end
 
   def join(player_id, player_name) do
-    GenServer.call(__MODULE__, {:join, player_id, player_name})
+    GenServer.call(@global_name, {:join, player_id, player_name})
   end
 
   def leave(player_id) do
-    GenServer.cast(__MODULE__, {:leave, player_id})
+    GenServer.cast(@global_name, {:leave, player_id})
   end
 
   def get_state do
-    GenServer.call(__MODULE__, :get_state)
+    GenServer.call(@global_name, :get_state)
   end
 
   def player_input(player_id, action) do
-    GenServer.cast(__MODULE__, {:input, player_id, action})
+    GenServer.cast(@global_name, {:input, player_id, action})
   end
 
   def update_viewport(zoom_level, game_width, game_height) do
-    GenServer.cast(__MODULE__, {:update_viewport, zoom_level, game_width, game_height})
+    GenServer.cast(@global_name, {:update_viewport, zoom_level, game_width, game_height})
   end
 
   def pubsub_topic, do: @pubsub_topic

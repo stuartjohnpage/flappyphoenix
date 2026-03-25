@@ -16,40 +16,64 @@ defmodule FlappyWeb.FlappyLive do
         :if={!@game_state.game_over && !@game_started}
         class="flex flex-col items-center justify-center h-screen"
       >
-        <p class="text-white text-4xl my-11">Get ready to play Flappy Phoenix!</p>
+        <p class="text-white text-5xl font-bold mb-8" style="text-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+          Get ready to play Flappy Phoenix!
+        </p>
 
-        <div class="space-y-2">
-          <p class="text-white text-2xl text-center">Don't let the 🐦‍🔥 fly off of the screen!</p>
-
-          <p class="text-white text-2xl text-center">
-            Use WASD or the arrow keys (⬆️ ⬇️ ⬅️ and ➡️ ) to move up, down, left and right!
-          </p>
-
-          <p class="text-white text-2xl text-center">
-            There are currently three power-ups, which fall from above, which make you stronger:
-            <ul class="flex flex-col pt-4 items-center justify-center">
-              <div class="flex flex-row">
-                <img src="/images/react.svg" class="w-7 h-7" />
-                <li>
-                  <p class="text-white text-2xl text-center">REACT-ive armour</p>
-                </li>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl w-full px-4 mb-8">
+          <%!-- Controls card --%>
+          <div class="bg-black bg-opacity-60 backdrop-blur-sm rounded-xl p-5 border border-white border-opacity-10">
+            <p class="text-yellow-300 font-bold text-lg mb-3">Controls</p>
+            <p class="text-gray-200 text-sm leading-relaxed">
+              Use <span class="font-mono bg-white bg-opacity-15 px-1.5 py-0.5 rounded">WASD</span>
+              or <span class="font-mono bg-white bg-opacity-15 px-1.5 py-0.5 rounded">Arrow Keys</span>
+              to fly around.
+            </p>
+            <p class="text-gray-200 text-sm leading-relaxed mt-2">
+              Don't fly off the screen!
+            </p>
+            <div class="flex justify-center mt-3">
+              <div class="relative">
+                <div class="absolute inset-0 rounded-full bg-yellow-400 blur-lg opacity-40 scale-125"></div>
+                <img src="/images/flipped_phoenix.svg" class="relative w-16 h-auto drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
               </div>
+              <p class="text-yellow-300 text-xs italic mt-1 ml-1 self-end">(the golden one is you!)</p>
+            </div>
+          </div>
 
-              <div class="flex flex-row">
-                <img src="/images/laser.svg" class="w-7 h-7" />
-                <li>
-                  <p class="text-white text-2xl text-center">The ELIXIR of LASER - Space to FIRE!</p>
-                </li>
-              </div>
-
-              <div class="flex flex-row">
-                <img src="/images/bomb.svg" class="w-7 h-7" />
-                <li>
-                  <p class="text-white text-2xl text-center">THE OBANomb</p>
-                </li>
-              </div>
+          <%!-- Power-ups card --%>
+          <div class="bg-black bg-opacity-60 backdrop-blur-sm rounded-xl p-5 border border-white border-opacity-10">
+            <p class="text-yellow-300 font-bold text-lg mb-3">Power-ups</p>
+            <ul class="space-y-2">
+              <li class="flex items-center gap-2">
+                <img src="/images/react.svg" class="w-6 h-6 flex-shrink-0" />
+                <span class="text-gray-200 text-sm">REACT-ive armour</span>
+              </li>
+              <li class="flex items-center gap-2">
+                <img src="/images/laser.svg" class="w-6 h-6 flex-shrink-0" />
+                <span class="text-gray-200 text-sm">ELIXIR of LASER
+                  <span class="font-mono bg-white bg-opacity-15 px-1.5 py-0.5 rounded text-xs">Space</span>
+                </span>
+              </li>
+              <li class="flex items-center gap-2">
+                <img src="/images/bomb.svg" class="w-6 h-6 flex-shrink-0" />
+                <span class="text-gray-200 text-sm">THE OBANomb</span>
+              </li>
             </ul>
-          </p>
+          </div>
+
+          <%!-- Enemies card --%>
+          <div class="bg-black bg-opacity-60 backdrop-blur-sm rounded-xl p-5 border border-white border-opacity-10">
+            <p class="text-yellow-300 font-bold text-lg mb-3">Watch out!</p>
+            <p class="text-gray-200 text-sm leading-relaxed">
+              Other frameworks are coming for you. Don't let them touch you!
+            </p>
+            <div class="flex gap-3 mt-3 justify-center">
+              <img src="/images/angular_final.svg" class="w-8 h-8 opacity-70" />
+              <img src="/images/node.svg" class="w-8 h-8 opacity-70" />
+              <img src="/images/ruby_rails.svg" class="h-8 opacity-70" />
+            </div>
+          </div>
         </div>
 
         <.simple_form for={@name_form} phx-submit="enter_name" class="flex flex-col items-center">
@@ -75,10 +99,6 @@ defmodule FlappyWeb.FlappyLive do
             </.button>
           </div>
         </.simple_form>
-
-        <p class="text-white text-2xl text-center">
-          Oh, and don't let those other frameworks touch you!
-        </p>
       </div>
       <%!-- Score container --%>
       <div :if={@game_state.game_over} class="flex flex-col items-center justify-center h-screen z-50">
